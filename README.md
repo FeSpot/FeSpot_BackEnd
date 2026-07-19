@@ -1,6 +1,6 @@
-# Spring Boot API Template
+# FeSpot Backend
 
-Spring Boot REST API 프로젝트를 빠르게 시작하기 위한 기본 템플릿입니다.
+FeSpot 서비스의 Spring Boot REST API 백엔드입니다.
 
 ## Included
 

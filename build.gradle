@@ -8,7 +8,7 @@ def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
 
 group = 'com.api'
 version = '0.0.1-SNAPSHOT'
-description = 'template'
+description = 'FeSpot backend'
 
 java {
     toolchain {

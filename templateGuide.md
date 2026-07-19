@@ -1,6 +1,6 @@
-# Spring Boot Template Guide
+# FeSpot Backend Guide
 
-이 템플릿은 Spring Boot REST API 프로젝트를 시작할 때 반복되는 기본 구성을 미리 담아둔 프로젝트입니다.
+FeSpot 백엔드는 Spring Boot REST API를 위한 공통 구성을 포함합니다.
 
 ## 기본 포함 구성
 
@@ -14,15 +14,12 @@
 - JWT 생성/검증/인증 필터 기본 구조
 - CORS 기본 설정
 
-## 새 프로젝트 시작 시 변경할 것
+## 프로젝트 환경에서 확인할 것
 
-1. 패키지명 `com.api.template`을 새 프로젝트 패키지명으로 변경합니다.
-2. `settings.gradle`의 `rootProject.name`을 새 프로젝트명으로 변경합니다.
-3. `build.gradle`의 `description`을 새 프로젝트명으로 변경합니다.
-4. `application.properties`의 DB URL, username, password를 실제 MySQL 환경에 맞게 변경합니다.
-5. `app.cors.allowed-origin`을 프론트엔드 주소에 맞게 변경합니다.
-6. Swagger 문서 제목과 설명을 `SwaggerConfig`에서 프로젝트에 맞게 변경합니다.
-7. `security.jwt.secret-key`는 운영 환경에서 반드시 새 값으로 교체합니다.
+1. `application.properties`의 DB URL, username, password를 실제 MySQL 환경에 맞게 변경합니다.
+2. `app.cors.allowed-origin`을 프론트엔드 주소에 맞게 변경합니다.
+3. Swagger 문서 제목과 설명을 `SwaggerConfig`에서 서비스에 맞게 변경합니다.
+4. `security.jwt.secret-key`는 운영 환경에서 반드시 새 값으로 교체합니다.
 
 ## 응답 포맷 사용법
 
