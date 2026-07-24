@@ -2,7 +2,7 @@ package com.api.fespot.domain.festival.web.dto;
 
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalKey;
-import com.api.fespot.domain.festival.entity.FestivalReadModel;
+import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -17,7 +17,7 @@ public record FestivalHomeRes(
 
     public static FestivalHomeRes available(
             FestivalKey festivalKey,
-            FestivalReadModel festival
+            FestivalSummaryReadModel festival
     ) {
         return new FestivalHomeRes(
                 festivalKey,
@@ -49,7 +49,7 @@ public record FestivalHomeRes(
             Instant fetchedAt //서버가 OpenAPI에서 데이터를 가져온 시각
     ) {
 
-        private static FestivalInfo from(FestivalReadModel festival) {
+        private static FestivalInfo from(FestivalSummaryReadModel festival) {
             return new FestivalInfo(
                     festival.contentId(),
                     festival.name(),

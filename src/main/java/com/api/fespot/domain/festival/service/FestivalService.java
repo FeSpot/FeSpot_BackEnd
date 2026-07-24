@@ -1,9 +1,12 @@
 package com.api.fespot.domain.festival.service;
 
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
+import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
-import com.api.fespot.domain.festival.entity.FestivalReadModel;
+import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
+import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
+import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
 import com.api.fespot.global.exception.CustomException;
 import java.util.Arrays;
@@ -19,7 +22,7 @@ public class FestivalService {
 
     public List<FestivalHomeRes> getHomeFestivals(int year) {
         try {
-            List<FestivalReadModel> festivals = festivalRepository.findByYear(year);
+            List<FestivalSummaryReadModel> festivals = festivalRepository.findByYear(year);
             return Arrays.stream(FestivalKey.values())
                     .map(festivalKey -> toResponse(festivalKey, festivals))
                     .toList();
@@ -32,7 +35,17 @@ public class FestivalService {
         }
     }
 
-    private FestivalHomeRes toResponse(FestivalKey festivalKey, List<FestivalReadModel> festivals) {
+    public FestivalDetailRes getFestivalDetail(String contentId) {
+        FestivalDetailReadModel festival = festivalRepository.findByContentId(contentId)
+                .orElseThrow(() -> new CustomException(
+                        FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+        return FestivalDetailRes.from(festival);
+    }
+
+    private FestivalHomeRes toResponse(
+            FestivalKey festivalKey,
+            List<FestivalSummaryReadModel> festivals
+    ) {
         return festivals.stream()
                 .filter(festival -> festivalKey.matches(festival.name()))
                 .findFirst()
