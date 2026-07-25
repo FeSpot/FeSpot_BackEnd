@@ -1,6 +1,7 @@
 package com.api.fespot.domain.festival.web.controller;
 
 import com.api.fespot.domain.festival.service.FestivalService;
+import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
 import com.api.fespot.global.response.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +40,19 @@ public class FestivalController {
             @Min(value = 2026, message = "year는 2026 이상이어야 합니다.")
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year) {
         List<FestivalHomeRes> response = festivalService.getHomeFestivals(year);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "축제 상세 기본정보 조회")
+    @SecurityRequirements
+    @GetMapping("/{contentId}")
+    public ResponseEntity<SuccessResponse<FestivalDetailRes>> getFestivalDetail(
+            @PathVariable
+            @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.") String contentId
+    ) {
+        FestivalDetailRes response = festivalService.getFestivalDetail(contentId);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
