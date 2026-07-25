@@ -6,6 +6,7 @@ import com.api.fespot.global.response.code.ErrorResponseCode;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
+import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -29,7 +30,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse<List<FieldErrorResponse>>> handleMethodArgumentNotValidException(
             MethodArgumentNotValidException e) {
-        log.warn("MethodArgumentNotValidException: {}", e.getMessage());
+        log.warn("Request body validation failed: {} field error(s)", e.getErrorCount());
         ErrorResponse<List<FieldErrorResponse>> errorResponse = ErrorResponse.of(
                 ErrorResponseCode.INVALID_HTTP_MESSAGE_BODY,
                 toFieldErrors(e.getFieldErrors()),
@@ -39,7 +40,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ErrorResponse<List<FieldErrorResponse>>> handleBindException(BindException e) {
-        log.warn("BindException: {}", e.getMessage());
+        log.warn("Request binding validation failed: {} field error(s)", e.getErrorCount());
         ErrorResponse<List<FieldErrorResponse>> errorResponse = ErrorResponse.of(
                 ErrorResponseCode.INVALID_HTTP_MESSAGE_PARAMETER,
                 toFieldErrors(e.getFieldErrors()),
@@ -50,7 +51,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse<List<FieldErrorResponse>>> handleConstraintViolationException(
             ConstraintViolationException e) {
-        log.warn("ConstraintViolationException: {}", e.getMessage());
+        log.warn("Request parameter validation failed: {} violation(s)",
+                e.getConstraintViolations().size());
         ErrorResponse<List<FieldErrorResponse>> errorResponse = ErrorResponse.of(
                 ErrorResponseCode.INVALID_HTTP_MESSAGE_PARAMETER,
                 toFieldErrorsFromConstraintViolations(e),
@@ -60,7 +62,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse<?>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        log.warn("HttpMessageNotReadableException: {}", e.getMessage());
+        log.warn("HTTP request body could not be read");
         ErrorResponse<?> errorResponse = ErrorResponse.from(ErrorResponseCode.INVALID_HTTP_MESSAGE_BODY);
         return ResponseEntity.status(errorResponse.getHttpStatus()).body(errorResponse);
     }
@@ -115,7 +117,7 @@ public class GlobalExceptionHandler {
         return fieldErrors.stream()
                 .map(fieldError -> new FieldErrorResponse(
                         fieldError.getField(),
-                        toRejectedValue(fieldError.getRejectedValue()),
+                        toRejectedValue(fieldError.getField(), fieldError.getRejectedValue()),
                         fieldError.getDefaultMessage()))
                 .toList();
     }
@@ -127,9 +129,10 @@ public class GlobalExceptionHandler {
     }
 
     private FieldErrorResponse toFieldError(ConstraintViolation<?> violation) {
+        String field = getLastPathNode(violation);
         return new FieldErrorResponse(
-                getLastPathNode(violation),
-                toRejectedValue(violation.getInvalidValue()),
+                field,
+                toRejectedValue(field, violation.getInvalidValue()),
                 violation.getMessage());
     }
 
@@ -142,10 +145,20 @@ public class GlobalExceptionHandler {
         return path.substring(dotIndex + 1);
     }
 
-    private String toRejectedValue(Object rejectedValue) {
+    private String toRejectedValue(String field, Object rejectedValue) {
+        if (isSensitiveField(field)) {
+            return null;
+        }
         if (rejectedValue == null) {
             return null;
         }
         return String.valueOf(rejectedValue);
+    }
+
+    private boolean isSensitiveField(String field) {
+        String normalizedField = field.toLowerCase(Locale.ROOT);
+        return normalizedField.contains("password")
+                || normalizedField.contains("token")
+                || normalizedField.contains("secret");
     }
 }
