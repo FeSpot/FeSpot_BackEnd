@@ -1,0 +1,13 @@
+FROM eclipse-temurin:21-jre
+
+USER root
+
+WORKDIR /app
+
+COPY build/libs/*.jar app.jar
+
+ENV TZ=Asia/Seoul
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.additional-location=optional:file:/app/config/"]

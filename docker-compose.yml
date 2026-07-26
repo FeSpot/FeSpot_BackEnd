@@ -1,0 +1,25 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  spring:
+    image: ${BACKEND_IMAGE}
+    container_name: spring
+    logging: *default-logging
+    restart: always
+    env_file: ./.env
+    environment:
+      - TZ=Asia/Seoul  # 로그·S3 key 타임스탬프를 KST로 통일
+    expose:
+      - "8080"
+    networks:
+      - fespot
+
+networks:
+  fespot:
+    driver: bridge
+
