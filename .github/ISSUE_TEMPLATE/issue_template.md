@@ -1,9 +1,10 @@
 ---
 name: default issue template
-about: 
+about: issue
 title: "[LABEL] 이슈 제목을 입력해주세요."
-labels: ""
-assignees: ""
+labels: ''
+assignees: ''
+
 ---
 
 ## 📌 Issue Type
