@@ -1,3 +1,11 @@
+---
+name: default issue template
+about: 
+title: "[LABEL] 이슈 제목을 입력해주세요."
+labels: ""
+assignees: ""
+---
+
 ## 📌 Issue Type
 <!---
 이슈가 어떤 목적으로 생성되었는지 체크해주세요.
