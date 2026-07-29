@@ -1,10 +1,12 @@
 package com.api.fespot.domain.festival.service;
 
+import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
+import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
@@ -19,13 +21,18 @@ import org.springframework.stereotype.Service;
 public class FestivalService {
 
     private final FestivalRepository festivalRepository;
+    private final FestivalJpaRepository festivalJpaRepository;
 
     public List<FestivalHomeRes> getHomeFestivals(int year) {
         try {
             List<FestivalSummaryReadModel> festivals = festivalRepository.findByYear(year);
-            return Arrays.stream(FestivalKey.values())
+            List<FestivalHomeRes> responses = Arrays.stream(FestivalKey.values())
                     .map(festivalKey -> toResponse(festivalKey, festivals))
                     .toList();
+
+            registerFestivals(responses, year);
+
+            return responses;
         } catch (CustomException e) {
             return Arrays.stream(FestivalKey.values())
                     .map(festivalKey -> FestivalHomeRes.unavailable(
@@ -53,5 +60,21 @@ public class FestivalService {
                 .orElseGet(() -> FestivalHomeRes.unavailable(
                         festivalKey,
                         FestivalAvailability.NOT_FOUND));
+    }
+
+    private void registerFestivals(
+            List<FestivalHomeRes> responses,
+            int year
+    ) {
+        responses.stream()
+                .filter(response ->
+                        response.availability() == FestivalAvailability.AVAILABLE)
+                .map(response -> response.festival().contentId())
+                .filter(contentId ->
+                        !festivalJpaRepository.existsByContentIdAndYear(
+                                contentId,
+                                year))
+                .map(contentId -> Festival.create(contentId, year))
+                .forEach(festivalJpaRepository::save);
     }
 }
