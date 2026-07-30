@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.service.FestivalLikeService;
+import com.api.fespot.domain.festival.service.FestivalNotificationService;
 import com.api.fespot.domain.festival.service.FestivalService;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
@@ -55,6 +56,9 @@ class FestivalControllerTest {
 
     @MockitoBean
     private FestivalLikeService festivalLikeService;
+
+    @MockitoBean
+    private FestivalNotificationService festivalNotificationService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -184,6 +188,58 @@ class FestivalControllerTest {
                 .andExpect(jsonPath("$.code").value("GLOBAL_400_BODY"));
 
         verifyNoInteractions(festivalLikeService);
+    }
+
+    @Test
+    void updatesFestivalNotificationForAuthenticatedUser() throws Exception {
+        authenticate();
+
+        mockMvc.perform(put("/api/festivals/100/notification")
+                        .param("year", "2026")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "enabled": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(festivalNotificationService)
+                .updateNotification(1L, "100", 2026, true);
+    }
+
+    @Test
+    void rejectsFestivalNotificationWithoutAuthentication() throws Exception {
+        mockMvc.perform(put("/api/festivals/100/notification")
+                        .param("year", "2026")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "enabled": true
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("GLOBAL_401"));
+
+        verifyNoInteractions(festivalNotificationService);
+    }
+
+    @Test
+    void rejectsFestivalNotificationWhenEnabledIsMissing() throws Exception {
+        authenticate();
+
+        mockMvc.perform(put("/api/festivals/100/notification")
+                        .param("year", "2026")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_BODY"));
+
+        verifyNoInteractions(festivalNotificationService);
     }
 
     private void authenticate() {
