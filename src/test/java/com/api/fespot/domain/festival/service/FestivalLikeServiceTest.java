@@ -1,0 +1,145 @@
+package com.api.fespot.domain.festival.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.festival.entity.FestivalLike;
+import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
+import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
+import com.api.fespot.domain.festival.repository.FestivalLikeRepository;
+import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.global.exception.CustomException;
+import com.api.fespot.global.response.code.ErrorResponseCode;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+class FestivalLikeServiceTest {
+
+    private static final Long USER_ID = 1L;
+    private static final String CONTENT_ID = "100";
+    private static final int YEAR = 2026;
+
+    private final UserRepository userRepository = mock(UserRepository.class);
+    private final FestivalJpaRepository festivalJpaRepository =
+            mock(FestivalJpaRepository.class);
+    private final FestivalLikeRepository festivalLikeRepository =
+            mock(FestivalLikeRepository.class);
+    private final FestivalLikeService festivalLikeService = new FestivalLikeService(
+            userRepository,
+            festivalJpaRepository,
+            festivalLikeRepository);
+
+    @Test
+    void createsLikeWhenLikedIsTrueAndLikeDoesNotExist() {
+        User user = user();
+        Festival festival = festival();
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(festivalLikeRepository.findByUserAndFestival(user, festival))
+                .willReturn(Optional.empty());
+
+        festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, true);
+
+        verify(festivalLikeRepository).save(any(FestivalLike.class));
+    }
+
+    @Test
+    void keepsLikeStateWhenLikeAlreadyExists() {
+        User user = user();
+        Festival festival = festival();
+        FestivalLike festivalLike = FestivalLike.create(user, festival);
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(festivalLikeRepository.findByUserAndFestival(user, festival))
+                .willReturn(Optional.of(festivalLike));
+
+        festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, true);
+
+        verify(festivalLikeRepository, never()).save(any(FestivalLike.class));
+        verify(festivalLikeRepository, never()).delete(any(FestivalLike.class));
+    }
+
+    @Test
+    void deletesLikeWhenLikedIsFalse() {
+        User user = user();
+        Festival festival = festival();
+        FestivalLike festivalLike = FestivalLike.create(user, festival);
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(festivalLikeRepository.findByUserAndFestival(user, festival))
+                .willReturn(Optional.of(festivalLike));
+
+        festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, false);
+
+        verify(festivalLikeRepository).delete(festivalLike);
+    }
+
+    @Test
+    void keepsUnlikeStateWhenLikeDoesNotExist() {
+        User user = user();
+        Festival festival = festival();
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(festivalLikeRepository.findByUserAndFestival(user, festival))
+                .willReturn(Optional.empty());
+
+        festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, false);
+
+        verify(festivalLikeRepository, never()).save(any(FestivalLike.class));
+        verify(festivalLikeRepository, never()).delete(any(FestivalLike.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void rejectsFestivalThatIsNotRegistered(boolean liked) {
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user()));
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, liked))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(
+                                        FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+
+        verifyNoInteractions(festivalLikeRepository);
+    }
+
+    @Test
+    void rejectsTokenUserThatNoLongerExists() {
+        given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, true))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+
+        verifyNoInteractions(
+                festivalJpaRepository,
+                festivalLikeRepository);
+    }
+
+    private Festival festival() {
+        return Festival.create(CONTENT_ID, YEAR);
+    }
+
+    private User user() {
+        return User.create("user@example.com", "password-hash");
+    }
+}
