@@ -8,6 +8,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.api.fespot.domain.festival.client.ai.dto.AiCongestionResponse;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse.HourlyCongestion;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse.RecommendedArrival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.service.FestivalLikeService;
@@ -78,7 +82,7 @@ class FestivalControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_200"))
                 .andExpect(jsonPath("$.data.length()").value(3))
-                .andExpect(jsonPath("$.data[0].festivalKey").value("BUSAN_FIREWORKS_FESTIVAL"))
+                .andExpect(jsonPath("$.data[0].festivalKey").value("BUSAN_SEA_FESTIVAL"))
                 .andExpect(jsonPath("$.data[0].availability").value("NOT_FOUND"));
     }
 
@@ -116,6 +120,61 @@ class FestivalControllerTest {
                 .andExpect(jsonPath("$.data.contact").doesNotExist())
                 .andExpect(jsonPath("$.data.longitude").doesNotExist())
                 .andExpect(jsonPath("$.data.latitude").doesNotExist());
+
+        verify(festivalService).getFestivalDetail("100");
+    }
+
+    @Test
+    void allowsGuestToReadDailyFestivalCongestionForecast() throws Exception {
+        given(festivalService.getDailyFestivalCongestionForecast(
+                FestivalKey.BUSAN_SEA_FESTIVAL,
+                LocalDate.of(2026, 8, 7)))
+                .willReturn(dailyForecast());
+
+        mockMvc.perform(get(
+                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        .param("date", "2026-08-07"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.data.festival_id")
+                        .value("busan_sea_festival"))
+                .andExpect(jsonPath("$.data.recommended_arrival.time")
+                        .value("16:00"))
+                .andExpect(jsonPath(
+                        "$.data.hourly_congestion[0].festival_congestion.score")
+                        .value(59.0));
+
+        verify(festivalService).getDailyFestivalCongestionForecast(
+                FestivalKey.BUSAN_SEA_FESTIVAL,
+                LocalDate.of(2026, 8, 7));
+    }
+
+    @Test
+    void rejectsDailyForecastWithoutDate() throws Exception {
+        mockMvc.perform(get(
+                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(festivalService);
+    }
+
+    @Test
+    void rejectsDailyForecastWithInvalidDate() throws Exception {
+        mockMvc.perform(get(
+                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        .param("date", "2026-08-32"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(festivalService);
+    }
+
+    @Test
+    void rejectsUnsupportedFestivalKeyForDailyForecast() throws Exception {
+        mockMvc.perform(get("/api/festivals/UNKNOWN/daily-forecast")
+                        .param("date", "2026-08-07"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(festivalService);
     }
 
     @Test
@@ -253,5 +312,21 @@ class FestivalControllerTest {
         given(jwtTokenProvider.validateToken("access-token")).willReturn(true);
         given(jwtTokenProvider.getAuthentication("access-token"))
                 .willReturn(authentication);
+    }
+
+    private AiDailyFestivalCongestionForecastResponse dailyForecast() {
+        return new AiDailyFestivalCongestionForecastResponse(
+                "busan_sea_festival",
+                "부산바다축제",
+                "2026-08-07",
+                new RecommendedArrival(
+                        "16:00",
+                        "16:00~17:00",
+                        "19:00",
+                        new AiCongestionResponse(34.3, "보통"),
+                        "주요 행사 전에 도착하면 혼잡을 피할 수 있습니다."),
+                List.of(new HourlyCongestion(
+                        "19:00~20:00",
+                        new AiCongestionResponse(59.0, "보통"))));
     }
 }
