@@ -10,6 +10,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.api.fespot.domain.festival.client.ai.AiFestivalClient;
+import com.api.fespot.domain.festival.client.ai.dto.AiCongestionResponse;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastReq;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse.HourlyCongestion;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse.RecommendedArrival;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
@@ -41,14 +47,15 @@ class FestivalServiceTest {
                 festival("100", "제21회 부산바다축제")));
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
-                festivalJpaRepository);
+                festivalJpaRepository,
+                mock(AiFestivalClient.class));
 
         List<FestivalHomeRes> result = festivalService.getHomeFestivals(2026);
 
         assertThat(result)
                 .extracting(FestivalHomeRes::festivalKey)
                 .containsExactly(
-                        FestivalKey.BUSAN_FIREWORKS_FESTIVAL,
+                        FestivalKey.BUSAN_SEA_FESTIVAL,
                         FestivalKey.BUSAN_INTERNATIONAL_FILM_FESTIVAL,
                         FestivalKey.BUSAN_INTERNATIONAL_ROCK_FESTIVAL);
         assertThat(result)
@@ -83,7 +90,8 @@ class FestivalServiceTest {
                 .willReturn(true);
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
-                festivalJpaRepository);
+                festivalJpaRepository,
+                mock(AiFestivalClient.class));
 
         festivalService.getHomeFestivals(2026);
 
@@ -99,7 +107,8 @@ class FestivalServiceTest {
                 .willThrow(new CustomException(FestivalErrorResponseCode.KTO_API_ERROR_502));
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
-                festivalJpaRepository);
+                festivalJpaRepository,
+                mock(AiFestivalClient.class));
 
         List<FestivalHomeRes> result = festivalService.getHomeFestivals(2026);
 
@@ -118,12 +127,14 @@ class FestivalServiceTest {
         FestivalRepository festivalRepository = mock(FestivalRepository.class);
         FestivalJpaRepository festivalJpaRepository =
                 mock(FestivalJpaRepository.class);
+        AiFestivalClient aiFestivalClient = mock(AiFestivalClient.class);
         FestivalDetailReadModel festival = detailFestival();
         given(festivalRepository.findByContentId("100"))
                 .willReturn(Optional.of(festival));
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
-                festivalJpaRepository);
+                festivalJpaRepository,
+                aiFestivalClient);
 
         FestivalDetailRes result = festivalService.getFestivalDetail("100");
 
@@ -138,7 +149,37 @@ class FestivalServiceTest {
         assertThat(result.imageCopyrightType()).isEqualTo("Type1");
         assertThat(result.source()).isEqualTo("한국관광공사 OpenAPI");
         assertThat(result.fetchedAt()).isEqualTo(Instant.parse("2026-07-23T07:30:00Z"));
+        verifyNoInteractions(aiFestivalClient);
         verifyNoInteractions(festivalJpaRepository);
+    }
+
+    @Test
+    void returnsDailyFestivalCongestionForecastWithoutKtoCall() {
+        FestivalRepository festivalRepository = mock(FestivalRepository.class);
+        FestivalJpaRepository festivalJpaRepository =
+                mock(FestivalJpaRepository.class);
+        AiFestivalClient aiFestivalClient = mock(AiFestivalClient.class);
+        AiDailyFestivalCongestionForecastResponse forecast = dailyForecast();
+        AiDailyFestivalCongestionForecastReq request =
+                new AiDailyFestivalCongestionForecastReq(
+                        "부산바다축제",
+                        "2026-08-07",
+                        false);
+        given(aiFestivalClient.fetchDailyFestivalCongestionForecast(request))
+                .willReturn(forecast);
+        FestivalService festivalService = new FestivalService(
+                festivalRepository,
+                festivalJpaRepository,
+                aiFestivalClient);
+
+        AiDailyFestivalCongestionForecastResponse result =
+                festivalService.getDailyFestivalCongestionForecast(
+                        FestivalKey.BUSAN_SEA_FESTIVAL,
+                        LocalDate.of(2026, 8, 7));
+
+        assertThat(result).isSameAs(forecast);
+        verify(aiFestivalClient).fetchDailyFestivalCongestionForecast(request);
+        verifyNoInteractions(festivalRepository, festivalJpaRepository);
     }
 
     @Test
@@ -146,16 +187,19 @@ class FestivalServiceTest {
         FestivalRepository festivalRepository = mock(FestivalRepository.class);
         FestivalJpaRepository festivalJpaRepository =
                 mock(FestivalJpaRepository.class);
+        AiFestivalClient aiFestivalClient = mock(AiFestivalClient.class);
         given(festivalRepository.findByContentId("999"))
                 .willReturn(Optional.empty());
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
-                festivalJpaRepository);
+                festivalJpaRepository,
+                aiFestivalClient);
 
         assertThatThrownBy(() -> festivalService.getFestivalDetail("999"))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
                                 .isEqualTo(FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+        verifyNoInteractions(aiFestivalClient);
     }
 
     private FestivalSummaryReadModel festival(String contentId, String name) {
@@ -184,5 +228,21 @@ class FestivalServiceTest {
                 "Type1",
                 "한국관광공사 OpenAPI",
                 Instant.parse("2026-07-23T07:30:00Z"));
+    }
+
+    private AiDailyFestivalCongestionForecastResponse dailyForecast() {
+        return new AiDailyFestivalCongestionForecastResponse(
+                "busan_sea_festival",
+                "부산바다축제",
+                "2026-08-07",
+                new RecommendedArrival(
+                        "16:00",
+                        "16:00~17:00",
+                        "19:00",
+                        new AiCongestionResponse(34.3, "보통"),
+                        "주요 행사 전에 도착하면 혼잡을 피할 수 있습니다."),
+                List.of(new HourlyCongestion(
+                        "19:00~20:00",
+                        new AiCongestionResponse(59.0, "보통"))));
     }
 }
