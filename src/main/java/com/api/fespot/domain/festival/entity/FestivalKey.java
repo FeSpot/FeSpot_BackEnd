@@ -9,13 +9,14 @@ import lombok.RequiredArgsConstructor;
 public enum FestivalKey {
 
     //홈에서 찾을 축제를 정의
-    BUSAN_FIREWORKS_FESTIVAL("부산바다축제"),
-    BUSAN_INTERNATIONAL_FILM_FESTIVAL("부산국제영화제"),
-    BUSAN_INTERNATIONAL_ROCK_FESTIVAL("부산국제록페스티벌");
+    BUSAN_SEA_FESTIVAL("부산바다축제", "busan_sea_festival"),
+    BUSAN_INTERNATIONAL_FILM_FESTIVAL("부산국제영화제", "busan_film_festival"),
+    BUSAN_INTERNATIONAL_ROCK_FESTIVAL("부산국제록페스티벌", "busan_rock_festival");
 
     private static final Pattern EDITION_PREFIX = Pattern.compile("^\\(?제\\s*\\d+회\\)?\\s*");
 
     private final String displayName;
+    private final String aiFestivalId;
 
     public boolean matches(String title) {
         if (title == null) {

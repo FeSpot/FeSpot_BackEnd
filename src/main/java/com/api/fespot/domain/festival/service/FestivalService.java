@@ -1,5 +1,8 @@
 package com.api.fespot.domain.festival.service;
 
+import com.api.fespot.domain.festival.client.ai.AiFestivalClient;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastReq;
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
@@ -11,6 +14,7 @@ import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
 import com.api.fespot.global.exception.CustomException;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,7 @@ public class FestivalService {
 
     private final FestivalRepository festivalRepository;
     private final FestivalJpaRepository festivalJpaRepository;
+    private final AiFestivalClient aiFestivalClient;
 
     public List<FestivalHomeRes> getHomeFestivals(int year) {
         try {
@@ -46,7 +51,20 @@ public class FestivalService {
         FestivalDetailReadModel festival = festivalRepository.findByContentId(contentId)
                 .orElseThrow(() -> new CustomException(
                         FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+
         return FestivalDetailRes.from(festival);
+    }
+
+    public AiDailyFestivalCongestionForecastResponse getDailyFestivalCongestionForecast(
+            FestivalKey festivalKey,
+            LocalDate date
+    ) {
+        AiDailyFestivalCongestionForecastReq request =
+                new AiDailyFestivalCongestionForecastReq(
+                        festivalKey.getDisplayName(),
+                        date.toString(),
+                        false);
+        return aiFestivalClient.fetchDailyFestivalCongestionForecast(request);
     }
 
     private FestivalHomeRes toResponse(

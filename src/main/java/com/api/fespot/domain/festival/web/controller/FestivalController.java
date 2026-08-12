@@ -1,5 +1,7 @@
 package com.api.fespot.domain.festival.web.controller;
 
+import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse;
+import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.service.FestivalLikeService;
 import com.api.fespot.domain.festival.service.FestivalNotificationService;
 import com.api.fespot.domain.festival.service.FestivalService;
@@ -17,8 +19,10 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -63,6 +67,24 @@ public class FestivalController {
             @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.") String contentId
     ) {
         FestivalDetailRes response = festivalService.getFestivalDetail(contentId);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "날짜별 축제 혼잡도 예측 조회")
+    @SecurityRequirements
+    @GetMapping("/{festivalKey}/daily-forecast")
+    public ResponseEntity<SuccessResponse<AiDailyFestivalCongestionForecastResponse>>
+            getDailyFestivalCongestionForecast(
+            @PathVariable FestivalKey festivalKey,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        AiDailyFestivalCongestionForecastResponse response =
+                festivalService.getDailyFestivalCongestionForecast(
+                        festivalKey,
+                        date);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
