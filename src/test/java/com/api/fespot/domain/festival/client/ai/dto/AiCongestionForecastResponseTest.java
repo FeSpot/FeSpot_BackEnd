@@ -61,7 +61,7 @@ class AiCongestionForecastResponseTest {
     }
 
     @Test
-    void deserializesFestivalAreaCongestionForecastAndIgnoresNearbyData()
+    void deserializesFestivalAreaCongestionForecastWithNearbyData()
             throws Exception {
         AiFestivalAreaCongestionForecastResponse response =
                 objectMapper.readValue(
@@ -78,7 +78,47 @@ class AiCongestionForecastResponseTest {
                                   },
                                   "nearby_1km_summary": {
                                     "radius_m": 1000,
-                                    "place_count": 1
+                                    "place_count": 3,
+                                    "level": "보통"
+                                  },
+                                  "nearby_1km_congestion": [
+                                    {
+                                      "place_name": "테스트 식당",
+                                      "category": "음식",
+                                      "distance_m": 120.5,
+                                      "score": 67.2,
+                                      "level": "혼잡",
+                                      "longitude": 128.9684,
+                                      "latitude": 35.0472
+                                    }
+                                  ],
+                                  "nearby_1km_category_congestion": {
+                                    "restaurants": {
+                                      "category": "음식점",
+                                      "place_count": 1,
+                                      "level": "혼잡",
+                                      "places": [
+                                        {
+                                          "place_name": "테스트 식당",
+                                          "category": "음식",
+                                          "distance_m": 120.5,
+                                          "score": 67.2,
+                                          "level": "혼잡"
+                                        }
+                                      ]
+                                    },
+                                    "cafes": {
+                                      "category": "카페",
+                                      "place_count": 1,
+                                      "level": "보통",
+                                      "places": []
+                                    },
+                                    "parking_lots": {
+                                      "category": "주차장",
+                                      "place_count": 1,
+                                      "level": "보통",
+                                      "places": []
+                                    }
                                   },
                                   "data_metadata": {}
                                 }
@@ -92,5 +132,20 @@ class AiCongestionForecastResponseTest {
                 .isEqualTo(59.0);
         assertThat(response.festivalCongestion().level())
                 .isEqualTo("보통");
+        assertThat(response.nearby1kmSummary().radiusM())
+                .isEqualTo(1000);
+        assertThat(response.nearby1kmCongestion()).hasSize(1);
+        assertThat(response.nearby1kmCongestion().get(0).placeName())
+                .isEqualTo("테스트 식당");
+        assertThat(response.nearby1kmCongestion().get(0).longitude())
+                .isEqualTo(128.9684);
+        assertThat(response.nearby1kmCategoryCongestion()
+                .restaurants().placeCount())
+                .isEqualTo(1);
+        assertThat(response.nearby1kmCategoryCongestion()
+                .restaurants().places()).hasSize(1);
+        assertThat(response.nearby1kmCategoryCongestion()
+                .parkingLots().category())
+                .isEqualTo("주차장");
     }
 }
