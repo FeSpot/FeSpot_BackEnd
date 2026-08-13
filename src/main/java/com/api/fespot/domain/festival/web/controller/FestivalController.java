@@ -5,10 +5,7 @@ import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.service.FestivalLikeService;
 import com.api.fespot.domain.festival.service.FestivalNotificationService;
 import com.api.fespot.domain.festival.service.FestivalService;
-import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
-import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
-import com.api.fespot.domain.festival.web.dto.FestivalLikeReq;
-import com.api.fespot.domain.festival.web.dto.FestivalNotificationReq;
+import com.api.fespot.domain.festival.web.dto.*;
 import com.api.fespot.global.response.SuccessResponse;
 import com.api.fespot.global.security.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,8 +16,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -72,11 +72,11 @@ public class FestivalController {
                 .body(SuccessResponse.ok(response));
     }
 
-    @Operation(summary = "날짜별 축제 혼잡도 예측 조회")
+    @Operation(summary = "날짜&시간별 축제 혼잡도 예측 조회")
     @SecurityRequirements
     @GetMapping("/{festivalKey}/daily-forecast")
     public ResponseEntity<SuccessResponse<AiDailyFestivalCongestionForecastResponse>>
-            getDailyFestivalCongestionForecast(
+    getDailyFestivalCongestionForecast(
             @PathVariable FestivalKey festivalKey,
             @RequestParam
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
@@ -85,6 +85,26 @@ public class FestivalController {
                 festivalService.getDailyFestivalCongestionForecast(
                         festivalKey,
                         date);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "반경 1km 주변 시설, 혼잡도 예측 조회")
+    @SecurityRequirements
+    @GetMapping("{festivalKey}/area-forecast")
+    public ResponseEntity<SuccessResponse<FestivalAreaCongestionForecastRes>>
+    getFestivalAreaCongestionForecast(
+            @PathVariable FestivalKey festivalKey,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Pattern(
+                    regexp = "^(?:0[8-9]|1[0-9]|2[0-3]):00$",
+                    message = "time은 08:00~23:00 범위의 정각이어야 합니다."
+            )
+            @RequestParam
+            String time
+    ) {
+        FestivalAreaCongestionForecastRes response = festivalService.getFestivalAreaCongestionForecast(festivalKey, date, LocalTime.parse(time));
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));

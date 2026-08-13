@@ -6,6 +6,8 @@ import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionFore
 import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionForecastResponse;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.global.exception.CustomException;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -23,8 +25,17 @@ public class AiFestivalClient {
             RestClient.Builder restClientBuilder,
             AiApiProperties properties
     ) {
+        ClientHttpRequestFactorySettings settings =
+                ClientHttpRequestFactorySettings.defaults()
+                        .withConnectTimeout(properties.getConnectTimeout())
+                        .withReadTimeout(properties.getReadTimeout());
+
+        var requestFactory =
+                ClientHttpRequestFactoryBuilder.detect().build(settings);
+
         this.restClient = restClientBuilder
                 .baseUrl(properties.getBaseUrl())
+                .requestFactory(requestFactory)
                 .build();
     }
 

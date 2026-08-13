@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/festivals/*").permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/api/festivals/*/daily-forecast").permitAll()
+                                "/api/festivals/*/daily-forecast", "/api/festivals/*/area-forecast").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

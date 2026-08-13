@@ -31,6 +31,8 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -173,6 +175,26 @@ class FestivalControllerTest {
         mockMvc.perform(get("/api/festivals/UNKNOWN/daily-forecast")
                         .param("date", "2026-08-07"))
                 .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(festivalService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"07:00", "08:30", "24:00"})
+    void rejectsAreaForecastWithInvalidTime(String time) throws Exception {
+        authenticate();
+
+        mockMvc.perform(get(
+                        "/api/festivals/BUSAN_SEA_FESTIVAL/area-forecast")
+                        .param("date", "2026-08-07")
+                        .param("time", time)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"))
+                .andExpect(jsonPath("$.data[0].field").value("time"))
+                .andExpect(jsonPath("$.data[0].rejectedValue").value(time))
+                .andExpect(jsonPath("$.data[0].message")
+                        .value("time은 08:00~23:00 범위의 정각이어야 합니다."));
 
         verifyNoInteractions(festivalService);
     }

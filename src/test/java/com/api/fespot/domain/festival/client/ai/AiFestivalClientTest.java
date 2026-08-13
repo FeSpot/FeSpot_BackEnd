@@ -2,6 +2,9 @@ package com.api.fespot.domain.festival.client.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -28,8 +32,11 @@ class AiFestivalClientTest {
 
     @BeforeEach
     void setUp() {
-        RestClient.Builder restClientBuilder = RestClient.builder();
+        RestClient.Builder restClientBuilder = spy(RestClient.builder());
         server = MockRestServiceServer.bindTo(restClientBuilder).build();
+        doReturn(restClientBuilder)
+                .when(restClientBuilder)
+                .requestFactory(any(ClientHttpRequestFactory.class));
 
         AiApiProperties properties = new AiApiProperties();
         properties.setBaseUrl("https://ai.example.test");
