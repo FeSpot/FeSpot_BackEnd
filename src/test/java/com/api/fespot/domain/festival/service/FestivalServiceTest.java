@@ -2,11 +2,8 @@ package com.api.fespot.domain.festival.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -74,13 +71,13 @@ class FestivalServiceTest {
         assertThat(result.get(1).festival()).isNull();
         assertThat(result.get(2).festival().contentId()).isEqualTo("300");
 
-        ArgumentCaptor<Festival> festivalCaptor =
-                ArgumentCaptor.forClass(Festival.class);
-        verify(festivalJpaRepository, times(2)).save(festivalCaptor.capture());
-        assertThat(festivalCaptor.getAllValues())
+        ArgumentCaptor<Iterable<Festival>> festivalsCaptor =
+                ArgumentCaptor.captor();
+        verify(festivalJpaRepository).saveAll(festivalsCaptor.capture());
+        assertThat(festivalsCaptor.getValue())
                 .extracting(Festival::getContentId)
                 .containsExactlyInAnyOrder("100", "300");
-        assertThat(festivalCaptor.getAllValues())
+        assertThat(festivalsCaptor.getValue())
                 .extracting(Festival::getYear)
                 .containsOnly(2026);
     }
@@ -101,7 +98,10 @@ class FestivalServiceTest {
 
         festivalService.getHomeFestivals(2026);
 
-        verify(festivalJpaRepository, never()).save(any(Festival.class));
+        ArgumentCaptor<Iterable<Festival>> festivalsCaptor =
+                ArgumentCaptor.captor();
+        verify(festivalJpaRepository).saveAll(festivalsCaptor.capture());
+        assertThat(festivalsCaptor.getValue()).isEmpty();
     }
 
     @Test
