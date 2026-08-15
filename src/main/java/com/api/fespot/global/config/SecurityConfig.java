@@ -1,5 +1,6 @@
 package com.api.fespot.global.config;
 
+import com.api.fespot.global.security.PublicEndpointPolicy;
 import com.api.fespot.global.security.handler.JwtAccessDeniedHandler;
 import com.api.fespot.global.security.handler.JwtAuthenticationEntryPoint;
 import com.api.fespot.global.security.jwt.JwtAuthenticationFilter;
@@ -50,7 +51,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_URLS).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(PublicEndpointPolicy.publicEndpointMatchers()).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/festivals/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/festivals/*").permitAll()
                         .anyRequest().authenticated())
