@@ -37,7 +37,7 @@ services:
     depends_on:
       - spring
     networks:
-      - alert
+      - fespot
     command: >
       /bin/sh -c "envsubst '$${SERVER_NAME}'
       < /etc/nginx/templates/default.conf.template
