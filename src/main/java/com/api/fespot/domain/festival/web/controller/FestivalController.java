@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/festivals")
+@RequestMapping("/festivals")
 public class FestivalController {
 
     private final FestivalService festivalService;
