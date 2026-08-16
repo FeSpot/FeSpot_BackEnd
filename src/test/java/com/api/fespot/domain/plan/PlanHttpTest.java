@@ -5,7 +5,6 @@ import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
-import com.api.fespot.global.security.AuthPrincipal;
 import com.api.fespot.global.security.jwt.JwtTokenProvider;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -18,8 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -46,6 +44,12 @@ public class PlanHttpTest {
     @Container
     @ServiceConnection
     private static final MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.4");
+
+    // JWT 필터의 액세스 토큰 블랙리스트 조회가 요청마다 Redis를 사용하므로 함께 띄운다.
+    @Container
+    @ServiceConnection
+    private static final GenericContainer<?> redis =
+            new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
     @LocalServerPort private int port;
 
@@ -76,10 +80,7 @@ public class PlanHttpTest {
     }
 
     private String createAccessToken(User user) {
-        AuthPrincipal principal = AuthPrincipal.of(user.getId(), user.getEmail(), List.of("USER"));
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-        return jwtTokenProvider.createAccessToken(authentication);
+        return jwtTokenProvider.generateAccessToken(user);
     }
 
     private Map<String, Object> validCreateBody() {
