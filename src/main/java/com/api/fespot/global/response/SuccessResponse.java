@@ -33,7 +33,7 @@ public class SuccessResponse<T> extends BaseResponse {
         return new SuccessResponse<>(null, SuccessResponseCode.SUCCESS_NO_CONTENT);
     }
 
-    public static SuccessResponse<?> emptyCustom(String message) {
+    public static SuccessResponse<Void> emptyCustom(String message) {
         return new SuccessResponse<>(null, SuccessResponseCode.SUCCESS_OK, message);
     }
 
