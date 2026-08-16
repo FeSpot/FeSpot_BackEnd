@@ -100,6 +100,48 @@ public class PlanServiceTest {
     }
 
     @Test
+    @DisplayName("계획 상세 조회 시 방문 장소까지 포함한 VisitPlan을 반환한다.")
+    void testFindDetailVisitPlan() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        VisitPlan found = planService.findDetailVisitPlan(user.getId(), created.getId());
+
+        // then
+        assertThat(found.getId()).isEqualTo(created.getId());
+        assertThat(found.getPlanTargetDate()).isEqualTo(planRequest.targetDate());
+        assertThat(found.getPlaces()).hasSize(1);
+        assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
+        assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
+        assertThat(found.getPlaces().get(0).getPlaceType()).isEqualTo(PlaceType.CAFE);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 계획을 상세 조회하면 예외를 던진다.")
+    void testFindDetailVisitPlanWithNotExistPlan() {
+        // when & then
+        assertThatThrownBy(() -> planService.findDetailVisitPlan(user.getId(), 999_999L))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 계획은 상세 조회할 수 없다.")
+    void testFindDetailVisitPlanOfOtherUser() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        User otherUser = entityManager.persist(User.create("other-user@fespot.com", "passwordHash"));
+        entityManager.flush();
+        entityManager.clear();
+
+        // when & then
+        assertThatThrownBy(() -> planService.findDetailVisitPlan(otherUser.getId(), created.getId()))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
     @DisplayName("계획 수정 시 식별자가 있는 방문 장소는 요청 값으로 수정된다.")
     void testUpdatePlanModifiesExistingPlace() {
         // given

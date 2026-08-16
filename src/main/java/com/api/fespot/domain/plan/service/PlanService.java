@@ -58,6 +58,11 @@ public class PlanService {
         return savedVisitPlan;
     }
 
+    public VisitPlan findDetailVisitPlan(Long userId, Long planId) {
+        return visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, planId)
+                .orElseThrow(RuntimeException::new);
+    }
+
     @Transactional
     public VisitPlan updateVisitPlan(Long userId, Long visitPlanId, PlanRequest request) {
 
