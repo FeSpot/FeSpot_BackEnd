@@ -4,25 +4,18 @@ import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class VisitPlan extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // 축제 개최일
-    @Column(nullable = false, length = 10)
-    private LocalDate festivalHeldAt;
 
     @Column(nullable = false, length = 10)
     private LocalDate planTargetDate;
@@ -34,4 +27,14 @@ public class VisitPlan extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "festival_id", nullable = false)
     private Festival festival;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "visitPlan", orphanRemoval = true)
+    private List<VisitPlace> places;
+
+    @Builder
+    private VisitPlan(LocalDate planTargetDate, User user, Festival festival) {
+        this.planTargetDate = planTargetDate;
+        this.user = user;
+        this.festival = festival;
+    }
 }

@@ -3,17 +3,13 @@ package com.api.fespot.domain.plan.entity;
 import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.global.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class VisitPlace extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,4 +28,13 @@ public class VisitPlace extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "visit_plan_id", nullable = false)
     private VisitPlan visitPlan;
+
+    @Builder
+    private VisitPlace(PlaceType placeType, LocalTime startAt, String placeName, VisitPlan visitPlan) {
+        this.placeType = placeType;
+        this.startAt = startAt;
+        this.placeName = placeName;
+        this.visitPlan = visitPlan;
+        visitPlan.getPlaces().add(this);
+    }
 }
