@@ -109,4 +109,12 @@ public class PlanService {
                .map(plan -> plan.convertToVisitPlace(visitPlan)).toList();
         return places;
     }
+
+    @Transactional
+    public void deleteVisitPlan(Long userId, Long visitPlanId) {
+        VisitPlan visitPlan = visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, visitPlanId)
+                .orElseThrow(RuntimeException::new);
+
+        visitPlanRepository.delete(visitPlan);
+    }
 }

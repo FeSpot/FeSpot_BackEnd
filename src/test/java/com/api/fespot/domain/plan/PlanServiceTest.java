@@ -6,6 +6,7 @@ import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
 import com.api.fespot.domain.plan.entity.enums.PlaceType;
+import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.plan.service.PlanService;
 import com.api.fespot.domain.plan.web.dto.PlanRequest;
@@ -45,6 +46,7 @@ public class PlanServiceTest {
 
     @Autowired private PlanService planService;
     @Autowired private VisitPlanRepository visitPlanRepository;
+    @Autowired private VisitPlaceRepository visitPlaceRepository;
     @Autowired private FestivalJpaRepository festivalJpaRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private TestEntityManager entityManager;
@@ -250,6 +252,48 @@ public class PlanServiceTest {
         assertThat(found.getPlaces()).hasSize(2);
         assertThat(found.getPlaces()).extracting(VisitPlace::getPlaceName)
                 .containsExactlyInAnyOrder("placeA2", "placeB2");
+    }
+
+    @Test
+    @DisplayName("계획 삭제 시 방문 장소들도 함께 삭제된다.")
+    void testDeleteVisitPlan() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        Long placeId = created.getPlaces().get(0).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        planService.deleteVisitPlan(user.getId(), created.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        assertThat(visitPlanRepository.findById(created.getId())).isEmpty();
+        assertThat(visitPlaceRepository.findById(placeId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 계획을 삭제하면 예외를 던진다.")
+    void testDeleteVisitPlanWithNotExistPlan() {
+        // when & then
+        assertThatThrownBy(() -> planService.deleteVisitPlan(user.getId(), 999_999L))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 계획은 삭제할 수 없다.")
+    void testDeleteVisitPlanOfOtherUser() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        User otherUser = entityManager.persist(User.create("other-user-delete@fespot.com", "passwordHash"));
+        entityManager.flush();
+        entityManager.clear();
+
+        // when & then
+        assertThatThrownBy(() -> planService.deleteVisitPlan(otherUser.getId(), created.getId()))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(visitPlanRepository.findById(created.getId())).isPresent();
     }
 
     @Test
