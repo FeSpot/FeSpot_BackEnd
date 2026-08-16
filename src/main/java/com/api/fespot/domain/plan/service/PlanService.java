@@ -5,6 +5,7 @@ import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
+import com.api.fespot.domain.plan.enums.PlanErrorResponseCode;
 import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.plan.service.dto.PlanListResult;
@@ -84,7 +85,7 @@ public class PlanService {
 
     public VisitPlan findDetailVisitPlan(Long userId, Long planId) {
         return visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, planId)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new CustomException(PlanErrorResponseCode.PLAN_NOT_FOUND));
     }
 
     @Transactional
@@ -93,7 +94,7 @@ public class PlanService {
         Map<Long, VisitPlace> foundPlaces = new HashMap<>();
 
         VisitPlan visitPlan = visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, visitPlanId)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new CustomException(PlanErrorResponseCode.PLAN_NOT_FOUND));
 
         for (VisitPlace i : visitPlan.getPlaces()) {
             foundPlaces.put(i.getId(), i);
@@ -137,7 +138,7 @@ public class PlanService {
     @Transactional
     public void deleteVisitPlan(Long userId, Long visitPlanId) {
         VisitPlan visitPlan = visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, visitPlanId)
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new CustomException(PlanErrorResponseCode.PLAN_NOT_FOUND));
 
         visitPlanRepository.delete(visitPlan);
     }
