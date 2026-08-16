@@ -1,6 +1,5 @@
 package com.api.fespot.domain.plan.entity;
 
-import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.global.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -18,10 +17,6 @@ public class VisitPlace extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PlaceType placeType;
-
     @Column(nullable = false, length = 10, unique = true)
     private LocalTime startAt;
 
@@ -33,16 +28,14 @@ public class VisitPlace extends BaseEntity {
     private VisitPlan visitPlan;
 
     @Builder
-    private VisitPlace(PlaceType placeType, LocalTime startAt, String placeName, VisitPlan visitPlan) {
-        this.placeType = placeType;
+    private VisitPlace(LocalTime startAt, String placeName, VisitPlan visitPlan) {
         this.startAt = startAt;
         this.placeName = placeName;
         this.visitPlan = visitPlan;
         visitPlan.getPlaces().add(this);
     }
 
-    public void modify(PlaceType placeType, LocalTime startAt, String placeName) {
-        this.placeType = placeType;
+    public void modify(LocalTime startAt, String placeName) {
         this.startAt = startAt;
         this.placeName = placeName;
     }

@@ -3,6 +3,7 @@ package com.api.fespot.domain.plan.web.dto;
 import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
 import com.api.fespot.global.response.CursorPage;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ public record PlanListResponse(
             Long planId,
 
             String festivalName,
+            @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "E MM.dd", locale = "ko")
             LocalDate targetDate,
             List<PlaceBlock> places
     ) {

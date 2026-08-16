@@ -41,4 +41,8 @@ public class VisitPlan extends BaseEntity {
         this.user = user;
         this.festival = festival;
     }
+
+    public void modifyTargetDate(LocalDate planTargetDate) {
+        this.planTargetDate = planTargetDate;
+    }
 }

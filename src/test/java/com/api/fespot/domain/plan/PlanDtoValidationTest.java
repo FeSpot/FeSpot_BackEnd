@@ -1,6 +1,5 @@
 package com.api.fespot.domain.plan;
 
-import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.domain.plan.web.dto.PlanRequest;
 import com.api.fespot.domain.plan.web.dto.valid.Create;
 import com.api.fespot.domain.plan.web.dto.valid.Update;
@@ -31,12 +30,12 @@ public class PlanDtoValidationTest {
     private LocalTime time = LocalTime.of(0, 0);
     private String name = "name";
 
-    private PlanRequest.Plan allValidatedPlan = new PlanRequest.Plan(1L, time, name, PlaceType.CAFE);
-    private PlanRequest.Plan placeKeyIsNull = new PlanRequest.Plan(null, time, name, PlaceType.CAFE);
-    private PlanRequest.Plan timeIsNull = new PlanRequest.Plan(1L, null, name, PlaceType.CAFE);
-    private PlanRequest.Plan isNotMul5 = new PlanRequest.Plan(1L, LocalTime.of(0, 1), name, PlaceType.CAFE);
-    private PlanRequest.Plan nameIsNull = new PlanRequest.Plan(1L, time, null, PlaceType.CAFE);
-    private PlanRequest.Plan nameIsBlank = new PlanRequest.Plan(1L, time, "", PlaceType.CAFE);
+    private PlanRequest.Plan allValidatedPlan = new PlanRequest.Plan(1L, time, name);
+    private PlanRequest.Plan placeKeyIsNull = new PlanRequest.Plan(null, time, name);
+    private PlanRequest.Plan timeIsNull = new PlanRequest.Plan(1L, null, name);
+    private PlanRequest.Plan isNotMul5 = new PlanRequest.Plan(1L, LocalTime.of(0, 1), name);
+    private PlanRequest.Plan nameIsNull = new PlanRequest.Plan(1L, time, null);
+    private PlanRequest.Plan nameIsBlank = new PlanRequest.Plan(1L, time, "");
 
 
     @BeforeEach
@@ -253,8 +252,8 @@ public class PlanDtoValidationTest {
     }
 
     @Test
-    @DisplayName("방문 장소 식별자 필드가 null인 방문 장소로 계획 수정 요청 시 실패한다.")
-    void isNotNullPlaceKeyInUpdateRequest() {
+    @DisplayName("방문 장소 식별자 필드가 null인 항목(신규 추가)이 포함된 수정 요청은 유효하다.")
+    void isValidUpdateRequestWithNullPlaceKey() {
         // given
         PlanRequest request = new PlanRequest(festivalKey, startDate, targetDate, List.of(placeKeyIsNull));
 
@@ -262,7 +261,7 @@ public class PlanDtoValidationTest {
         Set<ConstraintViolation<PlanRequest>> violations = validator.validate(request, Update.class);
 
         // then
-        assertThat(violations).hasSize(1);
+        assertThat(violations).isEmpty();
     }
 
     @Test
@@ -273,6 +272,19 @@ public class PlanDtoValidationTest {
 
         // when
         Set<ConstraintViolation<PlanRequest>> violations = validator.validate(request, Create.class);
+
+        // then
+        assertThat(violations).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("빈 계획 배열로 수정 요청 시 실패한다")
+    void isNotEmptyPlansAtCalledUpdateRequest() {
+        // given
+        PlanRequest request = new PlanRequest(festivalKey, startDate, targetDate, new ArrayList<>());
+
+        // when
+        Set<ConstraintViolation<PlanRequest>> violations = validator.validate(request, Update.class);
 
         // then
         assertThat(violations).hasSize(1);

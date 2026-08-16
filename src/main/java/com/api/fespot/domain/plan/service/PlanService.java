@@ -96,6 +96,13 @@ public class PlanService {
         VisitPlan visitPlan = visitPlanRepository.findVisitPlanWithVisitPlaceByUser_IdAndId(userId, visitPlanId)
                 .orElseThrow(() -> new CustomException(PlanErrorResponseCode.PLAN_NOT_FOUND));
 
+        visitPlan.modifyTargetDate(request.targetDate());
+
+        // plans가 null이면 장소 수정 없음
+        if (request.plans() == null) {
+            return visitPlan;
+        }
+
         for (VisitPlace i : visitPlan.getPlaces()) {
             foundPlaces.put(i.getId(), i);
         }
@@ -124,8 +131,7 @@ public class PlanService {
         if(updated.placeId() != null) {
             VisitPlace visitPlace = foundPlaces.get(updated.placeId());
             visitPlace.modify(
-                    updated.placeType() == null ? visitPlace.getPlaceType() : updated.placeType(),
-                    updated.startedAt() == null ? visitPlace.getStartAt() : updated.startedAt(),
+                    updated.startAt() == null ? visitPlace.getStartAt() : updated.startAt(),
                     updated.name() == null ? visitPlace.getPlaceName() : updated.name());
         }
         // 식별자가 없는 것들을 저장

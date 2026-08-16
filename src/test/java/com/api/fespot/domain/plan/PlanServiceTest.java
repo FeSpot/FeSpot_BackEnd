@@ -5,7 +5,6 @@ import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
-import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.plan.service.PlanService;
@@ -60,8 +59,7 @@ public class PlanServiceTest {
             List.of(
                     new PlanRequest.Plan(1L,
                             LocalTime.of(0, 0),
-                            "name",
-                            PlaceType.CAFE)
+                            "name")
             )
     );
 
@@ -97,7 +95,6 @@ public class PlanServiceTest {
         assertThat(found.getPlaces()).hasSize(1);
         assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
         assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
-        assertThat(found.getPlaces().get(0).getPlaceType()).isEqualTo(PlaceType.CAFE);
     }
 
     @Test
@@ -110,7 +107,7 @@ public class PlanServiceTest {
                 "1",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", PlaceType.RESTAURANT))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
         );
         planService.createVisitPlan(user.getId(), secondRequest);
         entityManager.flush();
@@ -139,13 +136,13 @@ public class PlanServiceTest {
                 "1",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", PlaceType.RESTAURANT))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
         ));
         VisitPlan third = planService.createVisitPlan(user.getId(), new PlanRequest(
                 "1",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace", PlaceType.CAFE))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace"))
         ));
         entityManager.flush();
         entityManager.clear();
@@ -183,7 +180,7 @@ public class PlanServiceTest {
                 "1",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(16, 0), "otherPlace", PlaceType.CAFE))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(16, 0), "otherPlace"))
         );
         planService.createVisitPlan(otherUser.getId(), otherRequest);
         entityManager.flush();
@@ -228,7 +225,6 @@ public class PlanServiceTest {
         assertThat(found.getPlaces()).hasSize(1);
         assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
         assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
-        assertThat(found.getPlaces().get(0).getPlaceType()).isEqualTo(PlaceType.CAFE);
     }
 
     @Test
@@ -254,6 +250,34 @@ public class PlanServiceTest {
     }
 
     @Test
+    @DisplayName("계획 수정 시 plans가 null이면 방문 장소는 유지하고 방문 일자만 변경한다.")
+    void testUpdatePlanWithNullPlansKeepsPlaces() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        LocalDate newTargetDate = LocalDate.now().plusDays(3);
+        PlanRequest updateRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                newTargetDate,
+                null
+        );
+
+        // when
+        planService.updateVisitPlan(user.getId(), created.getId(), updateRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        VisitPlan found = visitPlanRepository.findById(created.getId()).orElseThrow();
+        assertThat(found.getPlanTargetDate()).isEqualTo(newTargetDate);
+        assertThat(found.getPlaces()).hasSize(1);
+        assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
+    }
+
+    @Test
     @DisplayName("계획 수정 시 식별자가 있는 방문 장소는 요청 값으로 수정된다.")
     void testUpdatePlanModifiesExistingPlace() {
         // given
@@ -266,7 +290,7 @@ public class PlanServiceTest {
                 "1",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", PlaceType.RESTAURANT))
+                List.of(new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName"))
         );
 
         // when
@@ -282,7 +306,6 @@ public class PlanServiceTest {
         assertThat(place.getId()).isEqualTo(placeId);
         assertThat(place.getPlaceName()).isEqualTo("updatedName");
         assertThat(place.getStartAt()).isEqualTo(LocalTime.of(11, 30));
-        assertThat(place.getPlaceType()).isEqualTo(PlaceType.RESTAURANT);
     }
 
     @Test
@@ -299,8 +322,8 @@ public class PlanServiceTest {
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", PlaceType.RESTAURANT),
-                        new PlanRequest.Plan(null, LocalTime.of(13, 0), "newPlace", PlaceType.CAFE)
+                        new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName"),
+                        new PlanRequest.Plan(null, LocalTime.of(13, 0), "newPlace")
                 )
         );
 
@@ -320,7 +343,6 @@ public class PlanServiceTest {
                 .findFirst().orElseThrow();
         assertThat(newPlace.getId()).isNotNull();
         assertThat(newPlace.getStartAt()).isEqualTo(LocalTime.of(13, 0));
-        assertThat(newPlace.getPlaceType()).isEqualTo(PlaceType.CAFE);
     }
 
     @Test
@@ -332,8 +354,8 @@ public class PlanServiceTest {
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(null, LocalTime.of(10, 0), "placeA", PlaceType.CAFE),
-                        new PlanRequest.Plan(null, LocalTime.of(12, 0), "placeB", PlaceType.RESTAURANT)
+                        new PlanRequest.Plan(null, LocalTime.of(10, 0), "placeA"),
+                        new PlanRequest.Plan(null, LocalTime.of(12, 0), "placeB")
                 )
         );
         VisitPlan created = planService.createVisitPlan(user.getId(), createRequest);
@@ -347,8 +369,8 @@ public class PlanServiceTest {
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(placeAId, LocalTime.of(10, 30), "placeA2", PlaceType.CAFE),
-                        new PlanRequest.Plan(placeBId, LocalTime.of(12, 30), "placeB2", PlaceType.RESTAURANT)
+                        new PlanRequest.Plan(placeAId, LocalTime.of(10, 30), "placeA2"),
+                        new PlanRequest.Plan(placeBId, LocalTime.of(12, 30), "placeB2")
                 )
         );
 
