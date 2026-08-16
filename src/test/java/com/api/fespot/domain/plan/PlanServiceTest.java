@@ -13,6 +13,7 @@ import com.api.fespot.domain.plan.web.dto.PlanRequest;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.domain.plan.service.dto.PlanListResult;
 import com.api.fespot.global.exception.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,8 +48,6 @@ public class PlanServiceTest {
     @Autowired private PlanService planService;
     @Autowired private VisitPlanRepository visitPlanRepository;
     @Autowired private VisitPlaceRepository visitPlaceRepository;
-    @Autowired private FestivalJpaRepository festivalJpaRepository;
-    @Autowired private UserRepository userRepository;
     @Autowired private TestEntityManager entityManager;
 
     private Festival festival;
@@ -99,6 +98,117 @@ public class PlanServiceTest {
         assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
         assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
         assertThat(found.getPlaces().get(0).getPlaceType()).isEqualTo(PlaceType.CAFE);
+    }
+
+    @Test
+    @DisplayName("사용자의 모든 계획을 방문 장소까지 포함해 조회한다.")
+    void testFindAllVisitPlans() {
+        // given
+        planService.createVisitPlan(user.getId(), planRequest);
+
+        PlanRequest secondRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", PlaceType.RESTAURANT))
+        );
+        planService.createVisitPlan(user.getId(), secondRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        PlanListResult result = planService.findAllVisitPlans(user.getId(), null, 10);
+
+        // then
+        assertThat(result.plans()).hasSize(2);
+        assertThat(result.totalCount()).isEqualTo(2);
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+        assertThat(result.plans()).allSatisfy(plan -> assertThat(plan.getPlaces()).hasSize(1));
+        assertThat(result.plans()).flatExtracting(VisitPlan::getPlaces)
+                .extracting(VisitPlace::getPlaceName)
+                .containsExactlyInAnyOrder("name", "secondPlace");
+    }
+
+    @Test
+    @DisplayName("계획이 size보다 많으면 커서로 다음 페이지를 조회할 수 있다.")
+    void testFindAllVisitPlansWithCursorPaging() {
+        // given - 계획 3개 생성
+        VisitPlan first = planService.createVisitPlan(user.getId(), planRequest);
+        VisitPlan second = planService.createVisitPlan(user.getId(), new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", PlaceType.RESTAURANT))
+        ));
+        VisitPlan third = planService.createVisitPlan(user.getId(), new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace", PlaceType.CAFE))
+        ));
+        entityManager.flush();
+        entityManager.clear();
+
+        // when - 첫 페이지 (최신순, size 2)
+        PlanListResult firstPage = planService.findAllVisitPlans(user.getId(), null, 2);
+
+        // then
+        assertThat(firstPage.plans()).extracting(VisitPlan::getId)
+                .containsExactly(third.getId(), second.getId());
+        assertThat(firstPage.totalCount()).isEqualTo(3);
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(firstPage.nextCursor()).isEqualTo(second.getId());
+
+        // when - 커서로 두 번째 페이지
+        PlanListResult secondPage =
+                planService.findAllVisitPlans(user.getId(), firstPage.nextCursor(), 2);
+
+        // then
+        assertThat(secondPage.plans()).extracting(VisitPlan::getId)
+                .containsExactly(first.getId());
+        assertThat(secondPage.totalCount()).isEqualTo(3);
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(secondPage.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 계획은 전체 조회 결과에 포함되지 않는다.")
+    void testFindAllVisitPlansExcludesOtherUsersPlans() {
+        // given
+        VisitPlan mine = planService.createVisitPlan(user.getId(), planRequest);
+
+        User otherUser = entityManager.persist(User.create("other-user-list@fespot.com", "passwordHash"));
+        PlanRequest otherRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(new PlanRequest.Plan(null, LocalTime.of(16, 0), "otherPlace", PlaceType.CAFE))
+        );
+        planService.createVisitPlan(otherUser.getId(), otherRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        PlanListResult result = planService.findAllVisitPlans(user.getId(), null, 10);
+
+        // then
+        assertThat(result.plans()).hasSize(1);
+        assertThat(result.totalCount()).isEqualTo(1);
+        assertThat(result.plans().get(0).getId()).isEqualTo(mine.getId());
+    }
+
+    @Test
+    @DisplayName("계획이 없는 사용자는 빈 리스트를 반환한다.")
+    void testFindAllVisitPlansReturnsEmptyList() {
+        // when
+        PlanListResult result = planService.findAllVisitPlans(user.getId(), null, 10);
+
+        // then
+        assertThat(result.plans()).isEmpty();
+        assertThat(result.totalCount()).isEqualTo(0);
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
     }
 
     @Test

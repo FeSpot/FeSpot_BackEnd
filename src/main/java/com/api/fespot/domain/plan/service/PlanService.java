@@ -3,16 +3,18 @@ package com.api.fespot.domain.plan.service;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
-import com.api.fespot.domain.user.exception.UserErrorResponseCode;
-import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
 import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
+import com.api.fespot.domain.plan.service.dto.PlanListResult;
 import com.api.fespot.domain.plan.web.dto.PlanRequest;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +58,28 @@ public class PlanService {
         visitPlaceRepository.saveAll(list);
 
         return savedVisitPlan;
+    }
+
+    public PlanListResult findAllVisitPlans(Long userId, Long cursor, int size) {
+        // limit + 1개를 조회해서 다음 페이지 존재 여부를 판단한다.
+        List<Long> planIds = visitPlanRepository.findIdsByUser_IdAndCursor(userId, cursor, Limit.of(size + 1));
+        Integer totalCount = Math.toIntExact(visitPlanRepository.countByUser_Id(userId));
+
+        if (planIds.isEmpty()) {
+            return PlanListResult.empty(totalCount);
+        }
+
+        boolean hasNext = planIds.size() > size;
+        List<Long> pageIds = hasNext ? planIds.subList(0, size) : planIds;
+        List<VisitPlan> plans = visitPlanRepository.findAllWithVisitPlaceByIdIn(pageIds);
+        Long nextCursor = hasNext ? pageIds.get(pageIds.size() - 1) : null;
+
+        return new PlanListResult(
+                totalCount,
+                plans,
+                nextCursor,
+                hasNext
+        );
     }
 
     public VisitPlan findDetailVisitPlan(Long userId, Long planId) {

@@ -3,7 +3,10 @@ package com.api.fespot.domain.plan.entity;
 import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.global.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
 
