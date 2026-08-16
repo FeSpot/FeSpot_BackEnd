@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -29,7 +30,7 @@ public class VisitPlan extends BaseEntity {
     private Festival festival;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "visitPlan", orphanRemoval = true)
-    private List<VisitPlace> places;
+    private List<VisitPlace> places = new ArrayList<>();
 
     @Builder
     private VisitPlan(LocalDate planTargetDate, User user, Festival festival) {
