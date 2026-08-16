@@ -51,7 +51,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_URLS).permitAll()
-                        .requestMatchers("/auth/**").permitAll()
+                        // logout은 유효한 액세스 토큰이 필요하므로 정책에서 제외되어 있다.
+                        .requestMatchers(PublicEndpointPolicy.publicEndpointMatchers()).permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/*").permitAll()
                         .requestMatchers(

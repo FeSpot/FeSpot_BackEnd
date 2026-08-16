@@ -13,10 +13,10 @@ public final class PublicEndpointPolicy {
 
     private static final List<RequestMatcher> PUBLIC_ENDPOINTS = List.of(
             PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.OPTIONS, "/**"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/signup"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/login"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/oauth/{provider}/login"),
-            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/auth/reissue")
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/auth/signup"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/auth/login"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/auth/oauth/{provider}/login"),
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/auth/reissue")
     );
 
     private PublicEndpointPolicy() {
