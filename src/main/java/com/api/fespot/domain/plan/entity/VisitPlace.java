@@ -28,4 +28,8 @@ public class VisitPlace extends BaseEntity {
 
     @Column(nullable = false, length = 20)
     private String placeName;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "visit_plan_id", nullable = false)
+    private VisitPlan visitPlan;
 }
