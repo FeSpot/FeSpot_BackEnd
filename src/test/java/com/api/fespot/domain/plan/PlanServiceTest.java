@@ -3,6 +3,7 @@ package com.api.fespot.domain.plan;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
+import com.api.fespot.domain.plan.entity.VisitPlace;
 import com.api.fespot.domain.plan.entity.VisitPlan;
 import com.api.fespot.domain.plan.entity.enums.PlaceType;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
@@ -96,6 +97,117 @@ public class PlanServiceTest {
         assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
         assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
         assertThat(found.getPlaces().get(0).getPlaceType()).isEqualTo(PlaceType.CAFE);
+    }
+
+    @Test
+    @DisplayName("계획 수정 시 식별자가 있는 방문 장소는 요청 값으로 수정된다.")
+    void testUpdatePlanModifiesExistingPlace() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        Long placeId = created.getPlaces().get(0).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        PlanRequest updateRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", PlaceType.RESTAURANT))
+        );
+
+        // when
+        planService.updateVisitPlan(user.getId(), created.getId(), updateRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        VisitPlan found = visitPlanRepository.findById(created.getId()).orElseThrow();
+        assertThat(found.getPlaces()).hasSize(1);
+
+        VisitPlace place = found.getPlaces().get(0);
+        assertThat(place.getId()).isEqualTo(placeId);
+        assertThat(place.getPlaceName()).isEqualTo("updatedName");
+        assertThat(place.getStartAt()).isEqualTo(LocalTime.of(11, 30));
+        assertThat(place.getPlaceType()).isEqualTo(PlaceType.RESTAURANT);
+    }
+
+    @Test
+    @DisplayName("계획 수정 시 식별자가 없는 방문 장소는 새로 저장된다.")
+    void testUpdatePlanSavesNewPlace() {
+        // given
+        VisitPlan created = planService.createVisitPlan(user.getId(), planRequest);
+        Long placeId = created.getPlaces().get(0).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        PlanRequest updateRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(
+                        new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", PlaceType.RESTAURANT),
+                        new PlanRequest.Plan(null, LocalTime.of(13, 0), "newPlace", PlaceType.CAFE)
+                )
+        );
+
+        // when
+        planService.updateVisitPlan(user.getId(), created.getId(), updateRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        VisitPlan found = visitPlanRepository.findById(created.getId()).orElseThrow();
+        assertThat(found.getPlaces()).hasSize(2);
+        assertThat(found.getPlaces()).extracting(VisitPlace::getPlaceName)
+                .containsExactlyInAnyOrder("updatedName", "newPlace");
+
+        VisitPlace newPlace = found.getPlaces().stream()
+                .filter(place -> place.getPlaceName().equals("newPlace"))
+                .findFirst().orElseThrow();
+        assertThat(newPlace.getId()).isNotNull();
+        assertThat(newPlace.getStartAt()).isEqualTo(LocalTime.of(13, 0));
+        assertThat(newPlace.getPlaceType()).isEqualTo(PlaceType.CAFE);
+    }
+
+    @Test
+    @DisplayName("방문 장소가 2개 이상인 계획도 수정할 수 있다.")
+    void testUpdatePlanWithMultiplePlaces() {
+        // given
+        PlanRequest createRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(
+                        new PlanRequest.Plan(null, LocalTime.of(10, 0), "placeA", PlaceType.CAFE),
+                        new PlanRequest.Plan(null, LocalTime.of(12, 0), "placeB", PlaceType.RESTAURANT)
+                )
+        );
+        VisitPlan created = planService.createVisitPlan(user.getId(), createRequest);
+        Long placeAId = created.getPlaces().get(0).getId();
+        Long placeBId = created.getPlaces().get(1).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        PlanRequest updateRequest = new PlanRequest(
+                "1",
+                planRequest.startDate(),
+                planRequest.targetDate(),
+                List.of(
+                        new PlanRequest.Plan(placeAId, LocalTime.of(10, 30), "placeA2", PlaceType.CAFE),
+                        new PlanRequest.Plan(placeBId, LocalTime.of(12, 30), "placeB2", PlaceType.RESTAURANT)
+                )
+        );
+
+        // when
+        planService.updateVisitPlan(user.getId(), created.getId(), updateRequest);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        VisitPlan found = visitPlanRepository.findById(created.getId()).orElseThrow();
+        assertThat(found.getPlaces()).hasSize(2);
+        assertThat(found.getPlaces()).extracting(VisitPlace::getPlaceName)
+                .containsExactlyInAnyOrder("placeA2", "placeB2");
     }
 
     @Test

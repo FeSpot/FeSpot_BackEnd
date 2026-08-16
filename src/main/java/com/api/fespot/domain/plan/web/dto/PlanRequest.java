@@ -29,7 +29,6 @@ public record PlanRequest(
         List<Plan> plans
 ) {
     public record Plan(
-            @NotNull(message = "계획 식별자 필드는 비어있을 수 없습니다.", groups = Update.class)
             Long placeId,
 
             @NotNull(message = "시작 시각은 비어 있을 수 없습니다.", groups = Create.class)

@@ -19,7 +19,7 @@ public class VisitPlace extends BaseEntity {
     @Column(nullable = false)
     private PlaceType placeType;
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 10, unique = true)
     private LocalTime startAt;
 
     @Column(nullable = false, length = 20)
@@ -36,5 +36,11 @@ public class VisitPlace extends BaseEntity {
         this.placeName = placeName;
         this.visitPlan = visitPlan;
         visitPlan.getPlaces().add(this);
+    }
+
+    public void modify(PlaceType placeType, LocalTime startAt, String placeName) {
+        this.placeType = placeType;
+        this.startAt = startAt;
+        this.placeName = placeName;
     }
 }
