@@ -13,7 +13,7 @@ public interface VisitPlanRepository extends JpaRepository<VisitPlan,Long> {
     @Query("""
 select plan
 from VisitPlan plan
-    join plan.places as places
+    left join fetch plan.places as places
 where plan.user.id = :userId
     and plan.id = :planId
 """)
