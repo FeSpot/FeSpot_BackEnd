@@ -61,7 +61,7 @@ class AuthControllerTest {
         given(authService.signUp(request))
                 .willReturn(new SignUpRes(1L, "user@example.com"));
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -83,7 +83,7 @@ class AuthControllerTest {
         given(authService.login(request))
                 .willReturn(new LoginRes("Bearer", "access-token"));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -101,7 +101,7 @@ class AuthControllerTest {
 
     @Test
     void rejectsInvalidSignUpWithoutExposingPassword() throws Exception {
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -127,7 +127,7 @@ class AuthControllerTest {
                 .willThrow(new CustomException(
                         AuthErrorResponseCode.DUPLICATED_EMAIL_409));
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -147,7 +147,7 @@ class AuthControllerTest {
                 .willThrow(new CustomException(
                         AuthErrorResponseCode.LOGIN_FAILED_401));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

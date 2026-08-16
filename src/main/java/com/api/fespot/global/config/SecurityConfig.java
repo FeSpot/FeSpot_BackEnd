@@ -50,12 +50,13 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_URLS).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/festivals/home").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/festivals/*").permitAll()
+                        // context-path(/api)는 매칭 전에 제거되므로 패턴에 포함하지 않는다.
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/festivals/home").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/festivals/*").permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/api/festivals/*/daily-forecast", "/api/festivals/*/area-forecast").permitAll()
+                                "/festivals/*/daily-forecast", "/festivals/*/area-forecast").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
