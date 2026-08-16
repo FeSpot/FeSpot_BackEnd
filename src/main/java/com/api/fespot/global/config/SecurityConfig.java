@@ -1,5 +1,6 @@
 package com.api.fespot.global.config;
 
+import com.api.fespot.global.security.PublicEndpointPolicy;
 import com.api.fespot.global.security.handler.JwtAccessDeniedHandler;
 import com.api.fespot.global.security.handler.JwtAuthenticationEntryPoint;
 import com.api.fespot.global.security.jwt.JwtAuthenticationFilter;
@@ -50,7 +51,6 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_URLS).permitAll()
-                        // context-path(/api)는 매칭 전에 제거되므로 패턴에 포함하지 않는다.
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/*").permitAll()
