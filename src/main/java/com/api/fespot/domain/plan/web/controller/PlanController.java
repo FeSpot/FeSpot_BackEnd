@@ -36,7 +36,7 @@ public class PlanController {
     @GetMapping
     public ResponseEntity<SuccessResponse<PlanListResponse>> getAllPlans(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
-            @RequestParam(name = "cursor", defaultValue = "10") @Min(1) @Max(15) Long cursor,
+            @RequestParam(name = "cursor", required = false) Long cursor,
             @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(15) Integer size
     ) {
         PlanListResult result = planService.findAllVisitPlans(authPrincipal.getId(), cursor, size);
@@ -57,11 +57,12 @@ public class PlanController {
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable Long planId
     ) {
-        planService.findDetailVisitPlan(authPrincipal.getId(), planId);
+
+        VisitPlan visitPlan = planService.findDetailVisitPlan(authPrincipal.getId(), planId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(SuccessResponse.of(new Object(), PlanSuccessResponseCode.PLAN_FIND_DETAIL_SUCCESS));
+                .body(SuccessResponse.of(PlanDetailResponse.of(visitPlan), PlanSuccessResponseCode.PLAN_FIND_DETAIL_SUCCESS));
     }
 
     @PostMapping
@@ -82,7 +83,7 @@ public class PlanController {
     }
 
     @PatchMapping("/{planId}")
-    public ResponseEntity<SuccessResponse<?>> updatePlan(
+    public ResponseEntity<SuccessResponse<PlanDetailResponse>> updatePlan(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable @NotNull(message = "방문 계획 기본 키는 비어 있을 수 없습니다.") Long planId,
             @RequestBody @Validated(Update.class) PlanRequest request
@@ -101,12 +102,12 @@ public class PlanController {
     @DeleteMapping("/{planId}")
     public ResponseEntity<SuccessResponse<Void>> deletePlan(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
-            @PathVariable Long planId
+            @PathVariable @NotNull(message = "방문 계획 기본 키는 비어 있을 수 없습니다.") Long planId
     ) {
         planService.deleteVisitPlan(authPrincipal.getId(), planId);
 
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)
-                .body(SuccessResponse.empty());
+                .body(SuccessResponse.emptyCustom(PlanSuccessResponseCode.PLAN_UPDATE_SUCCESS.getMessage()));
     }
 }

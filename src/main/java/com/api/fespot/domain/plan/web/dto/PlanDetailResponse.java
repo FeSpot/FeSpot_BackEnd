@@ -11,7 +11,7 @@ public record PlanDetailResponse(
 
         Long planId,
 
-        @JsonFormat(locale = "ko_KR", pattern = "E MM.dd")
+        @JsonFormat(shape = JsonFormat.Shape.STRING, locale = "ko", pattern = "E MM.dd")
         LocalDate targetDate,
         List<PlaceBlock> places
 ) {
