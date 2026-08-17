@@ -51,12 +51,13 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_URLS).permitAll()
+                        // logout은 유효한 액세스 토큰이 필요하므로 정책에서 제외되어 있다.
                         .requestMatchers(PublicEndpointPolicy.publicEndpointMatchers()).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/festivals/home").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/festivals/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/festivals/home").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/festivals/*").permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
-                                "/api/festivals/*/daily-forecast", "/api/festivals/*/area-forecast").permitAll()
+                                "/festivals/*/daily-forecast", "/festivals/*/area-forecast").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

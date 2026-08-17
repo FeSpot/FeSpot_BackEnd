@@ -29,11 +29,11 @@ public class SuccessResponse<T> extends BaseResponse {
         this.data = data;
     }
 
-    public static SuccessResponse<?> empty() {
-        return new SuccessResponse<>(null, SuccessResponseCode.SUCCESS_OK);
+    public static SuccessResponse<Void> empty() {
+        return new SuccessResponse<>(null, SuccessResponseCode.SUCCESS_NO_CONTENT);
     }
 
-    public static SuccessResponse<?> emptyCustom(String message) {
+    public static SuccessResponse<Void> emptyCustom(String message) {
         return new SuccessResponse<>(null, SuccessResponseCode.SUCCESS_OK, message);
     }
 

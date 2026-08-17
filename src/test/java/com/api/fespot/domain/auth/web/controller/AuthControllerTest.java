@@ -87,7 +87,7 @@ class AuthControllerTest {
         given(authService.signUp(request))
                 .willReturn(new SignUpRes(1L, "user@example.com"));
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -109,7 +109,7 @@ class AuthControllerTest {
         given(authService.login(request))
                 .willReturn(LoginRes.bearer("access-token", "refresh-token"));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -127,7 +127,7 @@ class AuthControllerTest {
 
     @Test
     void rejectsInvalidSignUpWithoutExposingPassword() throws Exception {
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -153,7 +153,7 @@ class AuthControllerTest {
                 .willThrow(new CustomException(
                         AuthErrorResponseCode.DUPLICATED_EMAIL_409));
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -173,7 +173,7 @@ class AuthControllerTest {
                 .willThrow(new CustomException(
                         AuthErrorResponseCode.LOGIN_FAILED_401));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -192,7 +192,7 @@ class AuthControllerTest {
         given(socialLoginUseCase.login(any(SocialLoginCommand.class)))
                 .willReturn(new SocialLoginResult("access-token", "refresh-token"));
 
-        mockMvc.perform(post("/api/auth/oauth/kakao/login")
+        mockMvc.perform(post("/auth/oauth/kakao/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -207,7 +207,7 @@ class AuthControllerTest {
 
     @Test
     void rejectsUnsupportedSocialProvider() throws Exception {
-        mockMvc.perform(post("/api/auth/oauth/naver/login")
+        mockMvc.perform(post("/auth/oauth/naver/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -222,7 +222,7 @@ class AuthControllerTest {
 
     @Test
     void rejectsAppleLoginWithoutNonce() throws Exception {
-        mockMvc.perform(post("/api/auth/oauth/apple/login")
+        mockMvc.perform(post("/auth/oauth/apple/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -240,7 +240,7 @@ class AuthControllerTest {
         given(authTokenService.reissue("refresh-token"))
                 .willReturn(LoginRes.bearer("new-access-token", "new-refresh-token"));
 
-        mockMvc.perform(post("/api/auth/reissue")
+        mockMvc.perform(post("/auth/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -257,7 +257,7 @@ class AuthControllerTest {
         given(authTokenService.reissue("stolen-refresh-token"))
                 .willThrow(new RefreshTokenReusedException());
 
-        mockMvc.perform(post("/api/auth/reissue")
+        mockMvc.perform(post("/auth/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -273,7 +273,7 @@ class AuthControllerTest {
         given(authTokenService.reissue("invalid-refresh-token"))
                 .willThrow(new InvalidRefreshTokenException());
 
-        mockMvc.perform(post("/api/auth/reissue")
+        mockMvc.perform(post("/auth/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -286,7 +286,7 @@ class AuthControllerTest {
 
     @Test
     void logoutRequiresAuthentication() throws Exception {
-        mockMvc.perform(post("/api/auth/logout")
+        mockMvc.perform(post("/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -303,7 +303,7 @@ class AuthControllerTest {
         given(jwtTokenProvider.validateToken("access-token")).willReturn(true);
         given(jwtTokenProvider.getAuthentication("access-token")).willReturn(authentication());
 
-        mockMvc.perform(post("/api/auth/logout")
+        mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -323,7 +323,7 @@ class AuthControllerTest {
         given(jwtTokenProvider.getAuthentication("access-token")).willReturn(authentication());
         given(accessTokenBlacklist.contains("access-token")).willReturn(true);
 
-        mockMvc.perform(post("/api/auth/logout")
+        mockMvc.perform(post("/auth/logout")
                         .header("Authorization", "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
