@@ -16,6 +16,11 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+        uniqueConstraints = @UniqueConstraint(columnNames = {
+                "user_id", "festival_id", "plan_target_date"
+        })
+)
 public class VisitPlan extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

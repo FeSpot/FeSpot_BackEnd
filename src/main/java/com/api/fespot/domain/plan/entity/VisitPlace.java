@@ -12,12 +12,20 @@ import java.time.LocalTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_cant_duplicate_schedule_in_concurrent_time",
+                        columnNames = {"visit_plan_id", "start_at"}
+                )
+        }
+)
 public class VisitPlace extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 10, unique = true)
+    @Column(nullable = false, length = 10)
     private LocalTime startAt;
 
     @Column(nullable = false, length = 20)
