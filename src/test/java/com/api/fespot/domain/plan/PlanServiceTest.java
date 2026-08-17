@@ -106,7 +106,7 @@ public class PlanServiceTest {
         PlanRequest secondRequest = new PlanRequest(
                 "1",
                 planRequest.startDate(),
-                planRequest.targetDate(),
+                planRequest.targetDate().plusDays(1),
                 List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
         );
         planService.createVisitPlan(user.getId(), secondRequest);
@@ -135,13 +135,13 @@ public class PlanServiceTest {
         VisitPlan second = planService.createVisitPlan(user.getId(), new PlanRequest(
                 "1",
                 planRequest.startDate(),
-                planRequest.targetDate(),
+                planRequest.targetDate().plusDays(1),
                 List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
         ));
         VisitPlan third = planService.createVisitPlan(user.getId(), new PlanRequest(
                 "1",
                 planRequest.startDate(),
-                planRequest.targetDate(),
+                planRequest.targetDate().plusDays(2),
                 List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace"))
         ));
         entityManager.flush();
