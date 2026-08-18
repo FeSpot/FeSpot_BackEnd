@@ -1,5 +1,6 @@
 package com.api.fespot.global.security.jwt;
 
+import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.security.AuthPrincipal;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -9,10 +10,12 @@ import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.stream.Collectors;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
@@ -28,6 +31,9 @@ public class JwtTokenProvider implements InitializingBean {
 
     private static final String AUTHORITIES_KEY = "auth";
     private static final String ID_KEY = "id";
+    private static final String TOKEN_TYPE_KEY = "typ";
+    private static final String TOKEN_TYPE_ACCESS = "access";
+    private static final String TOKEN_TYPE_REFRESH = "refresh";
 
     private final JwtProperties jwtProperties;
     private SecretKey key;
@@ -42,36 +48,31 @@ public class JwtTokenProvider implements InitializingBean {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public TokenDto createTokens(Authentication authentication) {
-        String accessToken = createAccessToken(authentication);
-        String refreshToken = createRefreshToken(authentication);
-        return TokenDto.bearer(accessToken, refreshToken);
-    }
+    public String generateAccessToken(User user) {
+        long now = System.currentTimeMillis();
+        Date validity = new Date(now + jwtProperties.getAccessExpiration() * 1000);
 
-    public String createAccessToken(Authentication authentication) {
-        String authorities = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.joining(","));
-
-        AuthPrincipal principal = (AuthPrincipal) authentication.getPrincipal();
-        Date validity = new Date(System.currentTimeMillis() + jwtProperties.getAccessExpiration() * 1000);
-
+        // iat는 사용자 단위 일괄 차단(블랙리스트 경계) 판정에 사용된다.
         return Jwts.builder()
-                .subject(authentication.getName())
-                .claim(ID_KEY, principal.getId())
-                .claim(AUTHORITIES_KEY, authorities)
+                .subject(user.getEmail())
+                .claim(ID_KEY, user.getId())
+                .claim(AUTHORITIES_KEY, toAuthority(user))
+                .claim(TOKEN_TYPE_KEY, TOKEN_TYPE_ACCESS)
+                .issuedAt(new Date(now))
                 .expiration(validity)
                 .signWith(key, Jwts.SIG.HS512)
                 .compact();
     }
 
-    public String createRefreshToken(Authentication authentication) {
-        AuthPrincipal principal = (AuthPrincipal) authentication.getPrincipal();
-        Date validity = new Date(System.currentTimeMillis() + jwtProperties.getRefreshExpiration() * 1000);
+    public String generateRefreshToken(User user, Duration ttl) {
+        Date validity = new Date(System.currentTimeMillis() + ttl.toMillis());
 
+        // jti로 매 발급마다 고유한 토큰을 보장한다. 로테이션 시 신·구 토큰이 반드시 달라야 한다.
         return Jwts.builder()
-                .subject(authentication.getName())
-                .claim(ID_KEY, principal.getId())
+                .subject(user.getEmail())
+                .id(UUID.randomUUID().toString())
+                .claim(ID_KEY, user.getId())
+                .claim(TOKEN_TYPE_KEY, TOKEN_TYPE_REFRESH)
                 .expiration(validity)
                 .signWith(key, Jwts.SIG.HS512)
                 .compact();
@@ -95,8 +96,8 @@ public class JwtTokenProvider implements InitializingBean {
 
     public boolean validateToken(String token) {
         try {
-            parseClaims(token);
-            return true;
+            Claims claims = parseClaims(token);
+            return TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_KEY, String.class));
         } catch (io.jsonwebtoken.security.SignatureException | MalformedJwtException e) {
             log.warn("Invalid JWT signature.");
         } catch (ExpiredJwtException e) {
@@ -109,8 +110,12 @@ public class JwtTokenProvider implements InitializingBean {
         return false;
     }
 
-    public void validateTokenOrThrow(String token) throws JwtException {
-        parseClaims(token);
+    public Long getUserIdFromRefreshToken(String refreshToken) throws JwtException {
+        Claims claims = parseClaims(refreshToken);
+        if (!TOKEN_TYPE_REFRESH.equals(claims.get(TOKEN_TYPE_KEY, String.class))) {
+            throw new MalformedJwtException("Token is not a refresh token");
+        }
+        return claims.get(ID_KEY, Long.class);
     }
 
     public Long getExpiration(String token) {
@@ -120,6 +125,15 @@ public class JwtTokenProvider implements InitializingBean {
 
     public Long getUserIdFromToken(String token) {
         return parseClaims(token).get(ID_KEY, Long.class);
+    }
+
+    public Instant getIssuedAt(String token) {
+        Date issuedAt = parseClaims(token).getIssuedAt();
+        return issuedAt == null ? null : issuedAt.toInstant();
+    }
+
+    private String toAuthority(User user) {
+        return "ROLE_" + user.getRole().name();
     }
 
     private Claims parseClaims(String token) {

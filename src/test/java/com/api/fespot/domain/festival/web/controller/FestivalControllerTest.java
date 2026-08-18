@@ -79,7 +79,7 @@ class FestivalControllerTest {
                 .toList();
         given(festivalService.getHomeFestivals(2026)).willReturn(response);
 
-        mockMvc.perform(get("/api/festivals/home").param("year", "2026"))
+        mockMvc.perform(get("/festivals/home").param("year", "2026"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_200"))
@@ -104,7 +104,7 @@ class FestivalControllerTest {
                 Instant.parse("2026-07-23T07:30:00Z"));
         given(festivalService.getFestivalDetail("100")).willReturn(response);
 
-        mockMvc.perform(get("/api/festivals/100"))
+        mockMvc.perform(get("/festivals/100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.data.contentId").value("100"))
@@ -134,7 +134,7 @@ class FestivalControllerTest {
                 .willReturn(dailyForecast());
 
         mockMvc.perform(get(
-                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        "/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
                         .param("date", "2026-08-07"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
@@ -154,7 +154,7 @@ class FestivalControllerTest {
     @Test
     void rejectsDailyForecastWithoutDate() throws Exception {
         mockMvc.perform(get(
-                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast"))
+                        "/festivals/BUSAN_SEA_FESTIVAL/daily-forecast"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(festivalService);
@@ -163,7 +163,7 @@ class FestivalControllerTest {
     @Test
     void rejectsDailyForecastWithInvalidDate() throws Exception {
         mockMvc.perform(get(
-                        "/api/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        "/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
                         .param("date", "2026-08-32"))
                 .andExpect(status().isBadRequest());
 
@@ -172,7 +172,7 @@ class FestivalControllerTest {
 
     @Test
     void rejectsUnsupportedFestivalKeyForDailyForecast() throws Exception {
-        mockMvc.perform(get("/api/festivals/UNKNOWN/daily-forecast")
+        mockMvc.perform(get("/festivals/UNKNOWN/daily-forecast")
                         .param("date", "2026-08-07"))
                 .andExpect(status().isBadRequest());
 
@@ -185,7 +185,7 @@ class FestivalControllerTest {
         authenticate();
 
         mockMvc.perform(get(
-                        "/api/festivals/BUSAN_SEA_FESTIVAL/area-forecast")
+                        "/festivals/BUSAN_SEA_FESTIVAL/area-forecast")
                         .param("date", "2026-08-07")
                         .param("time", time)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
@@ -201,21 +201,21 @@ class FestivalControllerTest {
 
     @Test
     void rejectsNonNumericFestivalContentId() throws Exception {
-        mockMvc.perform(get("/api/festivals/not-a-number"))
+        mockMvc.perform(get("/festivals/not-a-number"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
     }
 
     @Test
     void keepsOtherApiPathsProtected() throws Exception {
-        mockMvc.perform(get("/api/not-public"))
+        mockMvc.perform(get("/not-public"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("GLOBAL_401"));
     }
 
     @Test
     void rejectsYearBefore2026() throws Exception {
-        mockMvc.perform(get("/api/festivals/home").param("year", "2025"))
+        mockMvc.perform(get("/festivals/home").param("year", "2025"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
     }
@@ -224,7 +224,7 @@ class FestivalControllerTest {
     void updatesFestivalLikeForAuthenticatedUser() throws Exception {
         authenticate();
 
-        mockMvc.perform(put("/api/festivals/100/like")
+        mockMvc.perform(put("/festivals/100/like")
                         .param("year", "2026")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -242,7 +242,7 @@ class FestivalControllerTest {
 
     @Test
     void rejectsFestivalLikeWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/api/festivals/100/like")
+        mockMvc.perform(put("/festivals/100/like")
                         .param("year", "2026")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -260,7 +260,7 @@ class FestivalControllerTest {
     void rejectsFestivalLikeWhenLikedIsMissing() throws Exception {
         authenticate();
 
-        mockMvc.perform(put("/api/festivals/100/like")
+        mockMvc.perform(put("/festivals/100/like")
                         .param("year", "2026")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -275,7 +275,7 @@ class FestivalControllerTest {
     void updatesFestivalNotificationForAuthenticatedUser() throws Exception {
         authenticate();
 
-        mockMvc.perform(put("/api/festivals/100/notification")
+        mockMvc.perform(put("/festivals/100/notification")
                         .param("year", "2026")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -294,7 +294,7 @@ class FestivalControllerTest {
 
     @Test
     void rejectsFestivalNotificationWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/api/festivals/100/notification")
+        mockMvc.perform(put("/festivals/100/notification")
                         .param("year", "2026")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -312,7 +312,7 @@ class FestivalControllerTest {
     void rejectsFestivalNotificationWhenEnabledIsMissing() throws Exception {
         authenticate();
 
-        mockMvc.perform(put("/api/festivals/100/notification")
+        mockMvc.perform(put("/festivals/100/notification")
                         .param("year", "2026")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                         .contentType(MediaType.APPLICATION_JSON)

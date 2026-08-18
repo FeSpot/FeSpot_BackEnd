@@ -36,15 +36,7 @@ jobs:
       - name: setup gradle cache # setup-gradle@v4 는 Gradle User Home 캐싱이 기본 활성
         uses: gradle/actions/setup-gradle@v4
 
-      # 아래 스텝은 testcontainers 가 containerd image store 기능을 필요로 할 때만 의미가 있습니다.
-      # daemon.json 만 쓰면 적용되지 않으므로 docker 데몬 재시작까지 해야 동작합니다.
-      # 일반적인 Testcontainers 사용이라면 이 스텝은 통째로 삭제해도 됩니다.
-      - name: Enable Docker for Testcontainers
-        run: |
-          sudo mkdir -p /etc/docker
-          echo '{"features":{"containerd-snapshotter":true}}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-
+      # GitHub-hosted ubuntu 러너는 Docker 데몬이 기본 실행 상태라 Testcontainers가 별도 설정 없이 동작합니다.
       - name: run tests & build jar # using cached dependency, executing test, and instruct build jar if test success.
         run: ./gradlew clean test bootJar --no-daemon
 
