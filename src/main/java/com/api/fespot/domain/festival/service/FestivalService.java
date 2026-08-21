@@ -23,8 +23,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FestivalService {
@@ -60,10 +63,12 @@ public class FestivalService {
         return FestivalDetailRes.from(festival);
     }
 
+    @Cacheable(cacheNames = "dailyFestivalForecast", sync = true)
     public AiDailyFestivalCongestionForecastResponse getDailyFestivalCongestionForecast(
             FestivalKey festivalKey,
             LocalDate date
     ) {
+        log.debug("Cache Miss, 일별 축제 혼잡도 호출 festivalKey={}, date={}", festivalKey, date);
         AiDailyFestivalCongestionForecastReq request =
                 new AiDailyFestivalCongestionForecastReq(
                         festivalKey.getDisplayName(),
@@ -72,11 +77,13 @@ public class FestivalService {
         return aiFestivalClient.fetchDailyFestivalCongestionForecast(request);
     }
 
+    @Cacheable(cacheNames = "festivalAreaForecast", sync = true)
     public FestivalAreaCongestionForecastRes getFestivalAreaCongestionForecast(
             FestivalKey festivalKey,
             LocalDate date,
             LocalTime time
     ) {
+        log.debug("Cache Miss, 주변 시설&혼잡도 호출 festivalKey={}, date={}, time={}", festivalKey, date, time);
         AiFestivalAreaCongestionForecastReq request =
                 new AiFestivalAreaCongestionForecastReq(
                         festivalKey.getAiFestivalId(),
