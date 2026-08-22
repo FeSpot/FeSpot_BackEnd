@@ -8,14 +8,18 @@ import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.ReportCreateReq;
+import com.api.fespot.domain.report.web.dto.ReportFeedRes;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
+import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.code.ErrorResponseCode;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +55,7 @@ public class ReportService {
         //새 마커 25m 안에 기존 대표 마커가 있는지 확인한다.
         /*
             존재한다면 -> 기존 ReportLocation 사용
-            존재하지않으면 -> 요청 좌표로 새로웅ㄴ ReportLocation 생성
+            존재하지않으면 -> 요청 좌표로 새로운 ReportLocation 생성
          */
         ReportLocation reportLocation = findNearestLocation(festival, request)
                 //기존 위치가 없을 때만 orElseGet() 내부 코드 실행
@@ -69,6 +73,42 @@ public class ReportService {
                 imageUrl);
 
         return reportRepository.save(report);
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPage<ReportFeedRes> getReportFeedList(
+            String contentId,
+            int year,
+            Long cursor,
+            int size
+    ){
+        //제보 대상 축제 조회
+        Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
+                .orElseThrow(() -> new CustomException(FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+
+        //다음 페이지 존재 여부를 확인하기 위해 요청 개수보다 1개 더 조회
+        List<Report> fetchReports = reportRepository.findFeedByFestival(festival, cursor, Limit.of(size+1));
+
+        boolean hasNext = fetchReports.size() > size;
+
+        // 추가로 조회한 1개는 실제 응답에서 제외
+        List<Report> pageReports = hasNext
+                ? fetchReports.subList(0, size)
+                : fetchReports;
+
+        LocalDateTime activeSince = LocalDateTime.now()
+                .minusMinutes(ACTIVE_REPORT_MINUTES);
+
+        List<ReportFeedRes> items = pageReports.stream()
+                .map(report -> ReportFeedRes.from(report, activeSince))
+                .toList();
+
+        // 다음 요청에서는 이번에 실제로 반환한 마지막 제보 ID를 전달
+        Long nextCursor = hasNext
+                ? pageReports.get(pageReports.size() - 1).getId()
+                : null;
+
+        return CursorPage.of(items, nextCursor, hasNext);
     }
 
     //가장 가까운 대표 위치 선택

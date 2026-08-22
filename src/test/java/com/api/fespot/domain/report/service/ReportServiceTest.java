@@ -19,15 +19,19 @@ import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.ReportCreateReq;
+import com.api.fespot.domain.report.web.dto.ReportFeedRes;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
+import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.code.ErrorResponseCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Limit;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class ReportServiceTest {
 
@@ -186,6 +190,134 @@ class ReportServiceTest {
         verifyNoInteractions(reportLocationRepository, reportRepository);
     }
 
+    @Test
+    void returnsRequestedSizeAndNextCursorWhenNextPageExists() {
+        Festival festival = festival();
+        Long cursor = 50L;
+        int size = 2;
+        LocalDateTime createdAt = LocalDateTime.now();
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findFeedByFestival(
+                festival,
+                cursor,
+                Limit.of(size + 1)))
+                .willReturn(List.of(
+                        report(festival, 40L, createdAt),
+                        report(festival, 30L, createdAt),
+                        report(festival, 20L, createdAt)));
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                CONTENT_ID,
+                YEAR,
+                cursor,
+                size);
+
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::reportId)
+                .containsExactly(40L, 30L);
+        assertThat(page.getPageInfo().hasNext()).isTrue();
+        assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
+        verify(reportRepository).findFeedByFestival(
+                festival,
+                cursor,
+                Limit.of(size + 1));
+    }
+
+    @Test
+    void returnsAllReportsWithoutCursorOnLastPage() {
+        Festival festival = festival();
+        int size = 3;
+        LocalDateTime createdAt = LocalDateTime.now();
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findFeedByFestival(
+                festival,
+                null,
+                Limit.of(size + 1)))
+                .willReturn(List.of(
+                        report(festival, 20L, createdAt),
+                        report(festival, 10L, createdAt)));
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                CONTENT_ID,
+                YEAR,
+                null,
+                size);
+
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::reportId)
+                .containsExactly(20L, 10L);
+        assertThat(page.getPageInfo().hasNext()).isFalse();
+        assertThat(page.getPageInfo().nextCursor()).isNull();
+    }
+
+    @Test
+    void returnsEmptyLastPageWhenNoReportsExist() {
+        Festival festival = festival();
+        int size = 3;
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findFeedByFestival(
+                festival,
+                null,
+                Limit.of(size + 1)))
+                .willReturn(List.of());
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                CONTENT_ID,
+                YEAR,
+                null,
+                size);
+
+        assertThat(page.getItems()).isEmpty();
+        assertThat(page.getPageInfo().hasNext()).isFalse();
+        assertThat(page.getPageInfo().nextCursor()).isNull();
+    }
+
+    @Test
+    void rejectsFeedRequestWhenFestivalIsNotRegistered() {
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.getReportFeedList(
+                CONTENT_ID,
+                YEAR,
+                null,
+                10))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(
+                                        FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+
+        verifyNoInteractions(reportRepository);
+    }
+
+    @Test
+    void marksReportsOlderThanThirtyMinutesAsExpired() {
+        Festival festival = festival();
+        LocalDateTime now = LocalDateTime.now();
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findFeedByFestival(
+                festival,
+                null,
+                Limit.of(3)))
+                .willReturn(List.of(
+                        report(festival, 20L, now.minusMinutes(31)),
+                        report(festival, 10L, now.minusMinutes(29))));
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                CONTENT_ID,
+                YEAR,
+                null,
+                2);
+
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::expired)
+                .containsExactly(true, false);
+    }
+
     private ReportCreateReq request() {
         return new ReportCreateReq(
                 LATITUDE,
@@ -200,5 +332,21 @@ class ReportServiceTest {
 
     private Festival festival() {
         return Festival.create(CONTENT_ID, YEAR);
+    }
+
+    private Report report(Festival festival, Long id, LocalDateTime createdAt) {
+        ReportLocation location = ReportLocation.create(
+                festival,
+                LATITUDE,
+                LONGITUDE);
+        Report report = Report.create(
+                user(),
+                location,
+                "제보 " + id,
+                CongestionLevel.CROWDED,
+                IMAGE_URL);
+        ReflectionTestUtils.setField(report, "id", id);
+        ReflectionTestUtils.setField(report, "createdAt", createdAt);
+        return report;
     }
 }
