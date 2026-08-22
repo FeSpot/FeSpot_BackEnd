@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(PublicEndpointPolicy.publicEndpointMatchers()).permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/festivals/*").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/reports/feed").permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/festivals/*/daily-forecast", "/festivals/*/area-forecast").permitAll()
