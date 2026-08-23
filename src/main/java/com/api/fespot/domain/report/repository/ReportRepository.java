@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
@@ -24,4 +25,13 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("cursor") Long cursor,
             Limit limit
     );
+
+
+    @Query("""
+            select report
+            from Report report join fetch report.reportLocation location
+            where location.festival = :festival
+             and report.createdAt >= :activeSince
+            order by report.createdAt desc""")
+    List<Report> findActiveByFestival(@Param("festival") Festival festival, @Param("activeSince") LocalDateTime activeSince);
 }
