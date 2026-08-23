@@ -20,6 +20,7 @@ import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.ReportCreateReq;
 import com.api.fespot.domain.report.web.dto.ReportFeedRes;
+import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
@@ -318,6 +319,114 @@ class ReportServiceTest {
                 .containsExactly(true, false);
     }
 
+    @Test
+    void summarizesReportsByLocationAndSortsByLatestReport() {
+        Festival festival = festival();
+        ReportLocation firstLocation = reportLocation(festival, 10L);
+        ReportLocation secondLocation = reportLocation(festival, 20L);
+        LocalDateTime firstLatestAt = LocalDateTime.of(
+                2026, 8, 23, 14, 50);
+        LocalDateTime secondLatestAt = LocalDateTime.of(
+                2026, 8, 23, 14, 55);
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findActiveByFestival(
+                eq(festival),
+                any(LocalDateTime.class)))
+                .willReturn(List.of(
+                        report(firstLocation, 1L, CongestionLevel.SAFE,
+                                firstLatestAt.minusMinutes(2)),
+                        report(secondLocation, 2L, CongestionLevel.DANGER,
+                                secondLatestAt.minusMinutes(1)),
+                        report(firstLocation, 3L, CongestionLevel.CROWDED,
+                                firstLatestAt.minusMinutes(1)),
+                        report(secondLocation, 4L, CongestionLevel.DANGER,
+                                secondLatestAt),
+                        report(firstLocation, 5L, CongestionLevel.CROWDED,
+                                firstLatestAt)));
+
+        List<ReportSummaryRes> summaries = reportService.getReportSummaryList(
+                CONTENT_ID,
+                YEAR);
+
+        assertThat(summaries).containsExactly(
+                new ReportSummaryRes(
+                        20L,
+                        2,
+                        null,
+                        secondLatestAt),
+                new ReportSummaryRes(
+                        10L,
+                        3,
+                        CongestionLevel.CROWDED,
+                        firstLatestAt));
+    }
+
+    @Test
+    void selectsHigherCongestionLevelWhenCountsAreTied() {
+        Festival festival = festival();
+        ReportLocation location = reportLocation(festival, 10L);
+        LocalDateTime latestAt = LocalDateTime.of(
+                2026, 8, 23, 15, 0);
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findActiveByFestival(
+                eq(festival),
+                any(LocalDateTime.class)))
+                .willReturn(List.of(
+                        report(location, 1L, CongestionLevel.NORMAL,
+                                latestAt.minusMinutes(3)),
+                        report(location, 2L, CongestionLevel.CROWDED,
+                                latestAt.minusMinutes(2)),
+                        report(location, 3L, CongestionLevel.NORMAL,
+                                latestAt.minusMinutes(1)),
+                        report(location, 4L, CongestionLevel.CROWDED,
+                                latestAt)));
+
+        List<ReportSummaryRes> summaries = reportService.getReportSummaryList(
+                CONTENT_ID,
+                YEAR);
+
+        assertThat(summaries).containsExactly(new ReportSummaryRes(
+                10L,
+                4,
+                CongestionLevel.CROWDED,
+                latestAt));
+    }
+
+    @Test
+    void returnsEmptySummaryWhenNoActiveReportsExist() {
+        Festival festival = festival();
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportRepository.findActiveByFestival(
+                eq(festival),
+                any(LocalDateTime.class)))
+                .willReturn(List.of());
+
+        List<ReportSummaryRes> summaries = reportService.getReportSummaryList(
+                CONTENT_ID,
+                YEAR);
+
+        assertThat(summaries).isEmpty();
+    }
+
+    @Test
+    void rejectsSummaryRequestWhenFestivalIsNotRegistered() {
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.getReportSummaryList(
+                CONTENT_ID,
+                YEAR))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(
+                                        FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+
+        verifyNoInteractions(reportRepository);
+    }
+
     private ReportCreateReq request() {
         return new ReportCreateReq(
                 LATITUDE,
@@ -344,6 +453,32 @@ class ReportServiceTest {
                 location,
                 "제보 " + id,
                 CongestionLevel.CROWDED,
+                IMAGE_URL);
+        ReflectionTestUtils.setField(report, "id", id);
+        ReflectionTestUtils.setField(report, "createdAt", createdAt);
+        return report;
+    }
+
+    private ReportLocation reportLocation(Festival festival, Long id) {
+        ReportLocation location = ReportLocation.create(
+                festival,
+                LATITUDE,
+                LONGITUDE);
+        ReflectionTestUtils.setField(location, "id", id);
+        return location;
+    }
+
+    private Report report(
+            ReportLocation location,
+            Long id,
+            CongestionLevel congestionLevel,
+            LocalDateTime createdAt
+    ) {
+        Report report = Report.create(
+                user(),
+                location,
+                "제보 " + id,
+                congestionLevel,
                 IMAGE_URL);
         ReflectionTestUtils.setField(report, "id", id);
         ReflectionTestUtils.setField(report, "createdAt", createdAt);
