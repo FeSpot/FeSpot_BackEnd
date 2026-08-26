@@ -83,3 +83,6 @@ networks:
   fespot:
     driver: bridge
 
+volumes:
+  redis-data:
+
