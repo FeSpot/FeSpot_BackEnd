@@ -14,6 +14,7 @@ import com.api.fespot.domain.auth.exception.InvalidOAuthTokenException;
 import com.api.fespot.domain.auth.repository.RefreshSessionStore;
 import com.api.fespot.domain.auth.repository.SocialAccountPort;
 import com.api.fespot.domain.auth.repository.SocialAccountPort.SocialAccountRegistration;
+import com.api.fespot.domain.auth.service.port.SocialUnlinkGateway;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.security.jwt.JwtAuthTokenIssuer;
 import com.api.fespot.global.security.jwt.JwtProperties;
@@ -41,13 +42,22 @@ class SocialLoginServiceTest {
             new JwtAuthTokenIssuer(jwtTokenProvider, jwtProperties);
     private final FakeRefreshSessionStore refreshSessionStore = new FakeRefreshSessionStore();
     private final SocialAccountPort socialAccountPort = mock(SocialAccountPort.class);
+    private final SocialUnlinkGateway appleAuthGateway = mock(SocialUnlinkGateway.class);
     private final StubOAuthClient oAuthClient = new StubOAuthClient(IDENTITY);
+    private final StubAppleOAuthClient appleOAuthClient = new StubAppleOAuthClient();
 
-    private final SocialLoginService socialLoginService = new SocialLoginService(
-            new OAuthClientResolver(List.of(oAuthClient)),
-            socialAccountPort,
-            authTokenIssuer,
-            refreshSessionStore);
+    private final SocialLoginService socialLoginService;
+
+    SocialLoginServiceTest() {
+        given(appleAuthGateway.provider()).willReturn(OAuthProvider.APPLE);
+        given(appleAuthGateway.usesStoredRefreshToken()).willReturn(true);
+        socialLoginService = new SocialLoginService(
+                new OAuthClientResolver(List.of(oAuthClient, appleOAuthClient)),
+                socialAccountPort,
+                authTokenIssuer,
+                refreshSessionStore,
+                new SocialUnlinkGatewayResolver(List.of(appleAuthGateway)));
+    }
 
     @Test
     void registersNewUserOnFirstSocialLogin() {
@@ -124,6 +134,71 @@ class SocialLoginServiceTest {
         verify(socialAccountPort, never()).register(any());
     }
 
+    @Test
+    void storesAppleRefreshTokenWhenAuthorizationCodePresent() {
+        given(socialAccountPort.findUser(OAuthProvider.APPLE, "apple-sub"))
+                .willReturn(Optional.of(user(3L)));
+        given(appleAuthGateway.exchangeCodeForRefreshToken("auth-code", "apple-sub"))
+                .willReturn(Optional.of("apple-refresh-token"));
+
+        socialLoginService.login(new SocialLoginCommand(
+                OAuthProvider.APPLE, CREDENTIAL, "raw-nonce", "auth-code"));
+
+        verify(socialAccountPort).storeProviderRefreshToken(
+                OAuthProvider.APPLE, "apple-sub", "apple-refresh-token");
+    }
+
+    @Test
+    void appleLoginSucceedsEvenWhenRefreshTokenExchangeFails() {
+        given(socialAccountPort.findUser(OAuthProvider.APPLE, "apple-sub"))
+                .willReturn(Optional.of(user(3L)));
+        given(appleAuthGateway.exchangeCodeForRefreshToken("auth-code", "apple-sub"))
+                .willThrow(new IllegalStateException("apple unavailable"));
+
+        SocialLoginResult result = socialLoginService.login(new SocialLoginCommand(
+                OAuthProvider.APPLE, CREDENTIAL, "raw-nonce", "auth-code"));
+
+        assertThat(jwtTokenProvider.getUserIdFromRefreshToken(result.refreshToken())).isEqualTo(3L);
+        verify(socialAccountPort, never()).storeProviderRefreshToken(any(), any(), any());
+    }
+
+    @Test
+    void skipsRefreshTokenExchangeWithoutAuthorizationCode() {
+        given(socialAccountPort.findUser(OAuthProvider.APPLE, "apple-sub"))
+                .willReturn(Optional.of(user(3L)));
+
+        socialLoginService.login(new SocialLoginCommand(
+                OAuthProvider.APPLE, CREDENTIAL, "raw-nonce", null));
+
+        verify(appleAuthGateway, never()).exchangeCodeForRefreshToken(any(), any());
+        verify(socialAccountPort, never()).storeProviderRefreshToken(any(), any(), any());
+    }
+
+    @Test
+    void ignoresAuthorizationCodeForNonAppleProvider() {
+        given(socialAccountPort.findUser(OAuthProvider.KAKAO, "12345"))
+                .willReturn(Optional.of(user(2L)));
+
+        socialLoginService.login(new SocialLoginCommand(
+                OAuthProvider.KAKAO, CREDENTIAL, null, "auth-code"));
+
+        verify(appleAuthGateway, never()).exchangeCodeForRefreshToken(any(), any());
+    }
+
+    @Test
+    void skipsExchangeWhenRefreshTokenAlreadyStored() {
+        given(socialAccountPort.findUser(OAuthProvider.APPLE, "apple-sub"))
+                .willReturn(Optional.of(user(3L)));
+        given(socialAccountPort.hasProviderRefreshToken(OAuthProvider.APPLE, "apple-sub"))
+                .willReturn(true);
+
+        socialLoginService.login(new SocialLoginCommand(
+                OAuthProvider.APPLE, CREDENTIAL, "raw-nonce", "auth-code"));
+
+        verify(appleAuthGateway, never()).exchangeCodeForRefreshToken(any(), any());
+        verify(socialAccountPort, never()).storeProviderRefreshToken(any(), any(), any());
+    }
+
     private User user(Long id) {
         User user = User.create("user@example.com", "nickname");
         ReflectionTestUtils.setField(user, "id", id);
@@ -157,6 +232,22 @@ class SocialLoginServiceTest {
         @Override
         public OAuthProvider provider() {
             return OAuthProvider.KAKAO;
+        }
+
+        @Override
+        public OAuthIdentity authenticate(String credential) {
+            return identity;
+        }
+    }
+
+    static class StubAppleOAuthClient implements OAuthClient {
+
+        OAuthIdentity identity = new OAuthIdentity(
+                OAuthProvider.APPLE, "apple-sub", "apple-user@example.com", "apple-user", true);
+
+        @Override
+        public OAuthProvider provider() {
+            return OAuthProvider.APPLE;
         }
 
         @Override

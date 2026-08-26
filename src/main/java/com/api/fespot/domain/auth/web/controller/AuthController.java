@@ -74,7 +74,9 @@ public class AuthController {
     }
 
     @Operation(summary = "소셜 로그인",
-            description = "카카오는 액세스 토큰, 구글/애플은 id_token을 credential로 전달합니다. 애플은 nonce가 필수입니다.")
+            description = "카카오는 액세스 토큰, 구글/애플은 id_token을 credential로 전달합니다. 애플은 nonce가 필수입니다. "
+                    + "탈퇴 시 제공자 연동 해제(Apple은 앱스토어 심사 요건)를 위해 애플은 authorizationCode, "
+                    + "구글은 serverAuthCode를 authorizationCode 필드로 함께 전달하는 것을 권장합니다.")
     @SecurityRequirements
     @ApiErrorCodeExamples(
             value = AuthErrorResponseCode.class,
@@ -88,7 +90,8 @@ public class AuthController {
         OAuthProvider oAuthProvider =
                 OAuthProviderPathParser.parseDirectLoginProvider(provider, request.nonce());
         SocialLoginResult result = socialLoginUseCase.login(
-                new SocialLoginCommand(oAuthProvider, request.credential(), request.nonce()));
+                new SocialLoginCommand(
+                        oAuthProvider, request.credential(), request.nonce(), request.authorizationCode()));
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(LoginRes.bearer(result.accessToken(), result.refreshToken())));

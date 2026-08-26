@@ -57,6 +57,19 @@ public class JpaSocialAccountAdapter implements SocialAccountPort {
         }
     }
 
+    @Override
+    @Transactional
+    public void storeProviderRefreshToken(OAuthProvider provider, String providerUserId, String refreshToken) {
+        credentialRepository.findByProviderAndProviderUserId(provider, providerUserId)
+                .ifPresent(credential -> credential.updateProviderRefreshToken(refreshToken));
+    }
+
+    @Override
+    public boolean hasProviderRefreshToken(OAuthProvider provider, String providerUserId) {
+        return credentialRepository
+                .existsByProviderAndProviderUserIdAndProviderRefreshTokenIsNotNull(provider, providerUserId);
+    }
+
     private boolean isSocialIdentityUniqueConstraintViolation(Throwable throwable) {
         Throwable cause = throwable;
         while (cause != null) {

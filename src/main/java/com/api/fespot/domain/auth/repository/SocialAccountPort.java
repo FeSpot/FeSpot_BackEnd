@@ -32,6 +32,26 @@ public interface SocialAccountPort {
      */
     User register(SocialAccountRegistration registration);
 
+    /**
+     * 소셜 인증 정보에 제공자 발급 refresh token을 보관한다. (탈퇴 시 제공자 연동 해제용)
+     * 연결된 인증 정보가 없으면 무시한다.
+     *
+     * @param provider OAuth 제공자
+     * @param providerUserId 제공자가 발급한 불변 사용자 ID
+     * @param refreshToken 제공자가 발급한 refresh token
+     */
+    void storeProviderRefreshToken(OAuthProvider provider, String providerUserId, String refreshToken);
+
+    /**
+     * 소셜 인증 정보에 제공자 refresh token이 이미 보관돼 있는지 확인한다.
+     * 로그인 hot path에서 불필요한 제공자 API 왕복을 생략하기 위해 사용한다.
+     *
+     * @param provider OAuth 제공자
+     * @param providerUserId 제공자가 발급한 불변 사용자 ID
+     * @return 보관된 refresh token이 있으면 {@code true}
+     */
+    boolean hasProviderRefreshToken(OAuthProvider provider, String providerUserId);
+
     record SocialAccountRegistration(
             OAuthProvider provider,
             String providerUserId,
