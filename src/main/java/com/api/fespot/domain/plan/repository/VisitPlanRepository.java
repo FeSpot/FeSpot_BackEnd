@@ -3,6 +3,7 @@ package com.api.fespot.domain.plan.repository;
 import com.api.fespot.domain.plan.entity.VisitPlan;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -51,4 +52,12 @@ order by plan.id desc
     );
 
     long countByUser_Id(Long userId);
+
+    // 회원 탈퇴 시 사용자의 모든 계획을 일괄 삭제한다.
+    @Modifying
+    @Query("""
+delete from VisitPlan plan
+where plan.user.id = :userId
+""")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }
