@@ -1,0 +1,36 @@
+package com.api.fespot.domain.report.entity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.user.entity.User;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+class ReportEntityTest {
+
+    @Test
+    @DisplayName("제보 위치와 제보를 생성한다")
+    void createsReportLocationAndReport() {
+        Festival festival = Festival.create("123456", 2026);
+        User user = User.create("user@example.com", "사용자");
+        ReportLocation location = ReportLocation.create(festival, 35.1532, 129.1187);
+
+        Report report = Report.create(
+                user,
+                location,
+                "메인 무대 앞에 사람이 많아요.",
+                CongestionLevel.CROWDED,
+                null
+        );
+
+        assertThat(location.getFestival()).isSameAs(festival);
+        assertThat(location.getAnchorLatitude()).isEqualTo(35.1532);
+        assertThat(location.getAnchorLongitude()).isEqualTo(129.1187);
+        assertThat(report.getUser()).isSameAs(user);
+        assertThat(report.getReportLocation()).isSameAs(location);
+        assertThat(report.getContent()).isEqualTo("메인 무대 앞에 사람이 많아요.");
+        assertThat(report.getCongestionLevel()).isEqualTo(CongestionLevel.CROWDED);
+        assertThat(report.getImageUrl()).isNull();
+    }
+}

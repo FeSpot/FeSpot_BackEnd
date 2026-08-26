@@ -9,4 +9,9 @@ import lombok.RequiredArgsConstructor;
 public class BaseException extends RuntimeException {
 
     private final BaseResponseCode baseResponseCode;
+
+    public BaseException(BaseResponseCode baseResponseCode, Throwable cause) {
+        super(cause.getMessage(), cause);
+        this.baseResponseCode = baseResponseCode;
+    }
 }
