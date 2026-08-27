@@ -69,4 +69,16 @@ public class Report extends BaseEntity {
     ) {
         return new Report(user, reportLocation, content, congestionLevel, imageUrl);
     }
+
+    public void update(String imageUrl, String content, CongestionLevel congestionLevel){
+        if(imageUrl != null){
+            this.imageUrl = imageUrl;
+        }
+        if(content != null){
+            this.content = content;
+        }
+        if(congestionLevel != null){
+            this.congestionLevel = congestionLevel;
+        }
+    }
 }
