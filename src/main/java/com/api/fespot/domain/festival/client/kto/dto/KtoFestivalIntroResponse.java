@@ -58,7 +58,7 @@ public record KtoFestivalIntroResponse(
     }
 
     /**
-     * 축제의 행사장, 기간, 운영시간 정보
+     * 축제의 행사장, 기간, 운영시간 정보, 진행 프로그램
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record IntroItem(
@@ -67,7 +67,8 @@ public record KtoFestivalIntroResponse(
             String eventplace,
             String eventstartdate,
             String eventenddate,
-            String playtime
+            String playtime,
+            String program
     ) {
     }
 }
