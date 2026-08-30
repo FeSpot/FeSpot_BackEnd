@@ -151,6 +151,7 @@ class FestivalServiceTest {
         assertThat(result.startDate()).isEqualTo(LocalDate.of(2026, 8, 1));
         assertThat(result.endDate()).isEqualTo(LocalDate.of(2026, 8, 3));
         assertThat(result.operatingHours()).isEqualTo("19:00~22:00");
+        assertThat(result.program()).isEqualTo("개막식 및 해변 공연");
         assertThat(result.imageUrl()).isEqualTo("https://example.com/sea-festival.jpg");
         assertThat(result.imageCopyrightType()).isEqualTo("Type1");
         assertThat(result.source()).isEqualTo("한국관광공사 OpenAPI");
@@ -275,6 +276,7 @@ class FestivalServiceTest {
                 LocalDate.of(2026, 8, 1),
                 LocalDate.of(2026, 8, 3),
                 "19:00~22:00",
+                "개막식 및 해변 공연",
                 "https://example.com/sea-festival.jpg",
                 "Type1",
                 "한국관광공사 OpenAPI",

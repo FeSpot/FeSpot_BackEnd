@@ -16,8 +16,10 @@ import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
+import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
+import com.api.fespot.domain.report.web.dto.MyReportRes;
 import com.api.fespot.domain.report.web.dto.ReportCreateReq;
 import com.api.fespot.domain.report.web.dto.ReportFeedRes;
 import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
@@ -189,6 +191,135 @@ class ReportServiceTest {
                                         FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
 
         verifyNoInteractions(reportLocationRepository, reportRepository);
+    }
+
+    @Test
+    void returnsRequestedMyReportsAndNextCursorWhenNextPageExists() {
+        User user = user();
+        Festival festival = festival();
+        Long cursor = 50L;
+        int size = 2;
+        LocalDateTime createdAt = LocalDateTime.now();
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(reportRepository.findByUser(user, cursor, Limit.of(size + 1)))
+                .willReturn(List.of(
+                        report(festival, 40L, createdAt),
+                        report(festival, 30L, createdAt),
+                        report(festival, 20L, createdAt)));
+
+        CursorPage<MyReportRes> page = reportService.getMyReports(
+                USER_ID,
+                cursor,
+                size);
+
+        assertThat(page.getItems())
+                .extracting(MyReportRes::reportId)
+                .containsExactly(40L, 30L);
+        assertThat(page.getPageInfo().hasNext()).isTrue();
+        assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
+        verify(reportRepository).findByUser(user, cursor, Limit.of(size + 1));
+    }
+
+    @Test
+    void returnsLastMyReportsPageAndMarksExpiredReports() {
+        User user = user();
+        Festival festival = festival();
+        int size = 2;
+        LocalDateTime now = LocalDateTime.now();
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(reportRepository.findByUser(user, null, Limit.of(size + 1)))
+                .willReturn(List.of(
+                        report(festival, 20L, now.minusMinutes(29)),
+                        report(festival, 10L, now.minusMinutes(31))));
+
+        CursorPage<MyReportRes> page = reportService.getMyReports(
+                USER_ID,
+                null,
+                size);
+
+        assertThat(page.getItems())
+                .extracting(MyReportRes::reportId)
+                .containsExactly(20L, 10L);
+        assertThat(page.getItems())
+                .extracting(MyReportRes::expired)
+                .containsExactly(false, true);
+        assertThat(page.getPageInfo().hasNext()).isFalse();
+        assertThat(page.getPageInfo().nextCursor()).isNull();
+    }
+
+    @Test
+    void returnsEmptyMyReportsPageWhenUserHasNoReports() {
+        User user = user();
+        int size = 3;
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(reportRepository.findByUser(user, null, Limit.of(size + 1)))
+                .willReturn(List.of());
+
+        CursorPage<MyReportRes> page = reportService.getMyReports(
+                USER_ID,
+                null,
+                size);
+
+        assertThat(page.getItems()).isEmpty();
+        assertThat(page.getPageInfo().hasNext()).isFalse();
+        assertThat(page.getPageInfo().nextCursor()).isNull();
+    }
+
+    @Test
+    void rejectsMyReportsWhenTokenUserNoLongerExists() {
+        given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.getMyReports(USER_ID, null, 10))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+
+        verifyNoInteractions(reportRepository);
+    }
+
+    @Test
+    void deletesMyReportOwnedByUser() {
+        User user = user();
+        Report report = mock(Report.class);
+        Long reportId = 10L;
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(reportRepository.findByUserAndId(user, reportId))
+                .willReturn(Optional.of(report));
+
+        reportService.deleteMyReport(USER_ID, reportId);
+
+        verify(reportRepository).findByUserAndId(user, reportId);
+        verify(reportRepository).delete(report);
+    }
+
+    @Test
+    void rejectsDeletingMyReportWhenTokenUserNoLongerExists() {
+        given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.deleteMyReport(USER_ID, 10L))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+
+        verifyNoInteractions(reportRepository);
+    }
+
+    @Test
+    void rejectsDeletingReportThatDoesNotBelongToUser() {
+        User user = user();
+        Long reportId = 10L;
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(reportRepository.findByUserAndId(user, reportId))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.deleteMyReport(USER_ID, reportId))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(
+                                        ReportErrorResponseCode.REPORT_NOT_FOUND_404));
+
+        verify(reportRepository).findByUserAndId(user, reportId);
+        verify(reportRepository, never()).delete(any(Report.class));
     }
 
     @Test

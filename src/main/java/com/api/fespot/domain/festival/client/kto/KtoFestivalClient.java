@@ -263,6 +263,7 @@ public class KtoFestivalClient implements FestivalRepository {
                 intro == null ? null : parseDate(intro.eventstartdate()),
                 intro == null ? null : parseDate(intro.eventenddate()),
                 intro == null ? null : textOrNull(intro.playtime()),
+                intro == null ? null : textOrNull(intro.program()),
                 firstText(common.firstimage(), common.firstimage2()),
                 textOrNull(common.imageCopyrightType()),
                 DATA_SOURCE,

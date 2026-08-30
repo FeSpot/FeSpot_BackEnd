@@ -2,9 +2,7 @@ package com.api.fespot.domain.report.web.controller;
 
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.service.ReportService;
-import com.api.fespot.domain.report.web.dto.ReportCreateReq;
-import com.api.fespot.domain.report.web.dto.ReportFeedRes;
-import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
+import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.SuccessResponse;
 import com.api.fespot.global.security.AuthPrincipal;
@@ -54,6 +52,51 @@ public class ReportController {
                 .body(SuccessResponse.create(report.getId()));
     }
 
+    @Operation(summary = "나의 제보 조회")
+    @GetMapping("/my")
+    public ResponseEntity<SuccessResponse<CursorPage<MyReportRes>>> getMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+
+            @RequestParam(required = false)
+            @Positive(message = "cursor는 양수여야 합니다")
+            Long cursor,
+
+            @RequestParam(defaultValue = "10")
+            @Min(value = 1, message = "size는 1 이상이어야 합니다")
+            @Max(value = 15, message = "size는 15이하여야 합니다")
+            int size
+    ){
+        CursorPage<MyReportRes> response = reportService.getMyReports(authPrincipal.getId(), cursor, size);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "나의 제보 수정")
+    @PatchMapping("/my/{reportId}")
+    public ResponseEntity<SuccessResponse<?>> updateMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId,
+            @Valid @RequestBody UpdateMyReportReq req
+            ){
+        reportService.updateMyReport(authPrincipal.getId(), reportId, req);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("수정되었습니다."));
+    }
+
+    @Operation(summary = "나의 제보 삭제")
+    @DeleteMapping("/my/{reportId}")
+    public ResponseEntity<SuccessResponse<?>> deleteMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId
+    ){
+        reportService.deleteMyReport(authPrincipal.getId(), reportId);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("삭제되었습니다."));
+    }
+
     @Operation(summary = "제보 피드 조회")
     @GetMapping("/feed")
     public ResponseEntity<SuccessResponse<CursorPage<ReportFeedRes>>> getReportFeed(
@@ -66,7 +109,7 @@ public class ReportController {
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year,
 
             @RequestParam(required = false)
-            @Positive(message = "cursor 양수여야 합니다")
+            @Positive(message = "cursor는 양수여야 합니다")
             Long cursor,
 
             @RequestParam(defaultValue = "10")

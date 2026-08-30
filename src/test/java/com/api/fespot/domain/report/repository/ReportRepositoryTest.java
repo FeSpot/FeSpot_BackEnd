@@ -77,6 +77,83 @@ class ReportRepositoryTest {
     }
 
     @Test
+    void findsOnlyUserReportsBeforeCursorInIdDescendingOrder() {
+        Festival festival = entityManager.persist(Festival.create("250", 2026));
+        User user = entityManager.persist(User.create(
+                "my-reports@example.com",
+                "사용자"));
+        User otherUser = entityManager.persist(User.create(
+                "other-reports@example.com",
+                "다른 사용자"));
+        ReportLocation location = entityManager.persist(ReportLocation.create(
+                festival,
+                35.1532,
+                129.1187));
+
+        Report oldest = persistReport(user, location, "첫 번째 내 제보");
+        persistReport(otherUser, location, "첫 번째 타인 제보");
+        Report middle = persistReport(user, location, "두 번째 내 제보");
+        persistReport(otherUser, location, "두 번째 타인 제보");
+        Report newest = persistReport(user, location, "세 번째 내 제보");
+        entityManager.flush();
+        updateCreatedAt(oldest, LocalDateTime.of(2030, 1, 1, 0, 0));
+        entityManager.clear();
+
+        List<Report> firstPage = reportRepository.findByUser(
+                user,
+                null,
+                Limit.of(2));
+        List<Report> secondPage = reportRepository.findByUser(
+                user,
+                middle.getId(),
+                Limit.of(2));
+
+        assertThat(firstPage)
+                .extracting(Report::getId)
+                .containsExactly(newest.getId(), middle.getId());
+        assertThat(secondPage)
+                .extracting(Report::getId)
+                .containsExactly(oldest.getId());
+    }
+
+    @Test
+    void findsOwnedReportAndDeletesOnlyThatReport() {
+        Festival festival = entityManager.persist(Festival.create("275", 2026));
+        User user = entityManager.persist(User.create(
+                "delete-report@example.com",
+                "사용자"));
+        User otherUser = entityManager.persist(User.create(
+                "keep-report@example.com",
+                "다른 사용자"));
+        ReportLocation location = entityManager.persist(ReportLocation.create(
+                festival,
+                35.1532,
+                129.1187));
+        Report report = persistReport(user, location, "삭제할 제보");
+        Report otherReport = persistReport(otherUser, location, "유지할 제보");
+        entityManager.flush();
+        entityManager.clear();
+
+        User persistedUser = entityManager.find(User.class, user.getId());
+        User persistedOtherUser = entityManager.find(User.class, otherUser.getId());
+        Report ownedReport = reportRepository.findByUserAndId(
+                        persistedUser,
+                        report.getId())
+                .orElseThrow();
+
+        assertThat(reportRepository.findByUserAndId(
+                persistedOtherUser,
+                report.getId())).isEmpty();
+
+        reportRepository.delete(ownedReport);
+        reportRepository.flush();
+        entityManager.clear();
+
+        assertThat(reportRepository.findById(report.getId())).isEmpty();
+        assertThat(reportRepository.findById(otherReport.getId())).isPresent();
+    }
+
+    @Test
     void findsOnlyActiveFestivalReportsInDescendingCreatedAtOrder() {
         Festival festival = entityManager.persist(Festival.create("300", 2026));
         Festival otherFestival = entityManager.persist(Festival.create("400", 2026));
