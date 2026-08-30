@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -46,6 +47,7 @@ public class Report extends BaseEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Builder
     private Report(
             User user,
             ReportLocation reportLocation,
@@ -58,16 +60,6 @@ public class Report extends BaseEntity {
         this.content = content;
         this.congestionLevel = congestionLevel;
         this.imageUrl = imageUrl;
-    }
-
-    public static Report create(
-            User user,
-            ReportLocation reportLocation,
-            String content,
-            CongestionLevel congestionLevel,
-            String imageUrl
-    ) {
-        return new Report(user, reportLocation, content, congestionLevel, imageUrl);
     }
 
     public void update(String imageUrl, String content, CongestionLevel congestionLevel){
