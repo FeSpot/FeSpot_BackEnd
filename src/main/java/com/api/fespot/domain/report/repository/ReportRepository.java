@@ -44,7 +44,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             where report.user = :user and (:cursor is null or report.id < :cursor)
             order by report.id desc
             """)
-    List<Report> findByUser(@Param("user") User user, @Param("cursor") Long cursor, Limit limit);
+    List<Report> findCursorPageByUser(@Param("user") User user, @Param("cursor") Long cursor, Limit limit);
 
     Optional<Report> findByUserAndId(User user, Long id);
 }
