@@ -11,6 +11,7 @@ import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
@@ -47,8 +48,7 @@ public class ReportService {
             String imageUrl
     ) {
         //토큰에서 얻은 사용자 ID로 사용자 조회
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+        User user = getUserOrThrow(userId);
 
         //제보 대상 축제 조회
         Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
@@ -67,22 +67,22 @@ public class ReportService {
                                 request.latitude(),
                                 request.longitude())));
 
-        Report report = Report.create(
-                user,
-                reportLocation,
-                request.content(),
-                request.congestionLevel(),
-                imageUrl);
+        Report report = Report.builder()
+                .user(user)
+                .reportLocation(reportLocation)
+                .content(request.content())
+                .congestionLevel(request.congestionLevel())
+                .imageUrl(imageUrl)
+                .build();
 
         return reportRepository.save(report);
     }
 
     @Transactional(readOnly = true)
     public CursorPage<MyReportRes> getMyReports(Long userId, Long cursor, int size) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+       User user = getUserOrThrow(userId);
 
-        List<Report> fetchReports = reportRepository.findByUser(user, cursor, Limit.of(size + 1));
+        List<Report> fetchReports = reportRepository.findCursorPageByUser(user, cursor, Limit.of(size + 1));
 
         boolean hasNext = fetchReports.size() > size;
 
@@ -102,8 +102,7 @@ public class ReportService {
 
     @Transactional
     public void updateMyReport(Long userId, Long reportId, UpdateMyReportReq req) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+       User user = getUserOrThrow(userId);
 
         Report report = reportRepository.findByUserAndId(user,reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));
@@ -117,8 +116,7 @@ public class ReportService {
 
     @Transactional
     public void deleteMyReport(Long userId, Long reportId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+       User user = getUserOrThrow(userId);
 
         Report report = reportRepository.findByUserAndId(user, reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));
@@ -213,6 +211,11 @@ public class ReportService {
                         .comparing(ReportSummaryRes::latestReportedAt)
                         .reversed()
                 ).toList();
+    }
+
+    private User getUserOrThrow(Long userId){
+        return userRepository.findById(userId)
+                .orElseThrow(()-> new CustomException(ErrorResponseCode.UNAUTHORIZED));
     }
 
     private void validateUpdateRequest(UpdateMyReportReq req) {
