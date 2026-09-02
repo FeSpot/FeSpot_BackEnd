@@ -1,6 +1,7 @@
 package com.api.fespot.domain.report.web.controller;
 
 import com.api.fespot.domain.report.entity.Report;
+import com.api.fespot.domain.report.service.ReportLikeService;
 import com.api.fespot.domain.report.service.ReportService;
 import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.global.response.CursorPage;
@@ -27,6 +28,7 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ReportLikeService reportLikeService;
 
     @Operation(summary = "제보 등록")
     @PostMapping
@@ -100,6 +102,8 @@ public class ReportController {
     @Operation(summary = "제보 피드 조회")
     @GetMapping("/feed")
     public ResponseEntity<SuccessResponse<CursorPage<ReportFeedRes>>> getReportFeed(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+
             @RequestParam
             @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.")
             @Size(max = 64, message = "contentId는 64자 이하여야 합니다.") String contentId,
@@ -117,7 +121,8 @@ public class ReportController {
             @Max(value = 15, message = "size는 15이하여야 합니다")
             int size
     ){
-        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(contentId, year, cursor, size);
+        Long userId = authPrincipal == null ? null : authPrincipal.getId();
+        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(userId, contentId, year, cursor, size);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
@@ -139,5 +144,18 @@ public class ReportController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "사용자가 제보피드에 좋아요 설정")
+    @PutMapping("/{reportId}/like")
+    public ResponseEntity<SuccessResponse<?>> updateReportLike(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId,
+            @Valid @RequestBody ReportLikeReq req
+    ){
+        reportLikeService.updateReportLike(authPrincipal.getId(), reportId, req.liked());
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("좋아요 변경 완료"));
     }
 }
