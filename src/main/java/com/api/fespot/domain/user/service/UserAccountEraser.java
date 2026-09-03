@@ -3,6 +3,7 @@ package com.api.fespot.domain.user.service;
 import com.api.fespot.domain.auth.repository.jpa.CredentialRepository;
 import com.api.fespot.domain.festival.repository.FestivalLikeRepository;
 import com.api.fespot.domain.festival.repository.FestivalNotificationRepository;
+import com.api.fespot.domain.notification.repository.PushTokenRepository;
 import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.user.entity.User;
@@ -26,6 +27,7 @@ public class UserAccountEraser {
     private final FestivalLikeRepository festivalLikeRepository;
     private final FestivalNotificationRepository festivalNotificationRepository;
     private final CredentialRepository credentialRepository;
+    private final PushTokenRepository pushTokenRepository;
 
     @Transactional
     public void erase(Long userId) {
@@ -36,6 +38,7 @@ public class UserAccountEraser {
         visitPlanRepository.deleteAllByUserId(userId);
         festivalLikeRepository.deleteAllByUserId(userId);
         festivalNotificationRepository.deleteAllByUserId(userId);
+        pushTokenRepository.deleteAllByUserId(userId);
         credentialRepository.findByUser_Id(userId).ifPresent(credentialRepository::delete);
         userRepository.delete(user);
     }
