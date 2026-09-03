@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -17,6 +18,8 @@ import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.repository.ReportLikeCount;
+import com.api.fespot.domain.report.repository.ReportLikeRepository;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.MyReportRes;
@@ -33,6 +36,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.springframework.data.domain.Limit;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -51,11 +55,14 @@ class ReportServiceTest {
     private final ReportLocationRepository reportLocationRepository =
             mock(ReportLocationRepository.class);
     private final ReportRepository reportRepository = mock(ReportRepository.class);
+    private final ReportLikeRepository reportLikeRepository =
+            mock(ReportLikeRepository.class);
     private final ReportService reportService = new ReportService(
             userRepository,
             festivalJpaRepository,
             reportLocationRepository,
-            reportRepository);
+            reportRepository,
+            reportLikeRepository);
 
     @Test
     void createsLocationAndReportWhenNearbyLocationDoesNotExist() {
@@ -201,7 +208,10 @@ class ReportServiceTest {
         int size = 2;
         LocalDateTime createdAt = LocalDateTime.now();
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-        given(reportRepository.findByUser(user, cursor, Limit.of(size + 1)))
+        given(reportRepository.findCursorPageByUser(
+                user,
+                cursor,
+                Limit.of(size + 1)))
                 .willReturn(List.of(
                         report(festival, 40L, createdAt),
                         report(festival, 30L, createdAt),
@@ -217,7 +227,10 @@ class ReportServiceTest {
                 .containsExactly(40L, 30L);
         assertThat(page.getPageInfo().hasNext()).isTrue();
         assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
-        verify(reportRepository).findByUser(user, cursor, Limit.of(size + 1));
+        verify(reportRepository).findCursorPageByUser(
+                user,
+                cursor,
+                Limit.of(size + 1));
     }
 
     @Test
@@ -227,7 +240,10 @@ class ReportServiceTest {
         int size = 2;
         LocalDateTime now = LocalDateTime.now();
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-        given(reportRepository.findByUser(user, null, Limit.of(size + 1)))
+        given(reportRepository.findCursorPageByUser(
+                user,
+                null,
+                Limit.of(size + 1)))
                 .willReturn(List.of(
                         report(festival, 20L, now.minusMinutes(29)),
                         report(festival, 10L, now.minusMinutes(31))));
@@ -252,7 +268,10 @@ class ReportServiceTest {
         User user = user();
         int size = 3;
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-        given(reportRepository.findByUser(user, null, Limit.of(size + 1)))
+        given(reportRepository.findCursorPageByUser(
+                user,
+                null,
+                Limit.of(size + 1)))
                 .willReturn(List.of());
 
         CursorPage<MyReportRes> page = reportService.getMyReports(
@@ -289,7 +308,9 @@ class ReportServiceTest {
         reportService.deleteMyReport(USER_ID, reportId);
 
         verify(reportRepository).findByUserAndId(user, reportId);
-        verify(reportRepository).delete(report);
+        InOrder deletionOrder = inOrder(reportLikeRepository, reportRepository);
+        deletionOrder.verify(reportLikeRepository).deleteAllByReportId(reportId);
+        deletionOrder.verify(reportRepository).delete(report);
     }
 
     @Test
@@ -338,8 +359,14 @@ class ReportServiceTest {
                         report(festival, 40L, createdAt),
                         report(festival, 30L, createdAt),
                         report(festival, 20L, createdAt)));
+        List<Long> reportIds = List.of(40L, 30L);
+        given(reportLikeRepository.countByReportIds(reportIds))
+                .willReturn(List.of(likeCount(40L, 2L)));
+        given(reportLikeRepository.findLikeReportIds(USER_ID, reportIds))
+                .willReturn(List.of(30L));
 
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                USER_ID,
                 CONTENT_ID,
                 YEAR,
                 cursor,
@@ -348,12 +375,20 @@ class ReportServiceTest {
         assertThat(page.getItems())
                 .extracting(ReportFeedRes::reportId)
                 .containsExactly(40L, 30L);
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::likeCount)
+                .containsExactly(2L, 0L);
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::likedByMe)
+                .containsExactly(false, true);
         assertThat(page.getPageInfo().hasNext()).isTrue();
         assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
         verify(reportRepository).findFeedByFestival(
                 festival,
                 cursor,
                 Limit.of(size + 1));
+        verify(reportLikeRepository).countByReportIds(reportIds);
+        verify(reportLikeRepository).findLikeReportIds(USER_ID, reportIds);
     }
 
     @Test
@@ -372,6 +407,7 @@ class ReportServiceTest {
                         report(festival, 10L, createdAt)));
 
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                null,
                 CONTENT_ID,
                 YEAR,
                 null,
@@ -397,6 +433,7 @@ class ReportServiceTest {
                 .willReturn(List.of());
 
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                null,
                 CONTENT_ID,
                 YEAR,
                 null,
@@ -405,6 +442,7 @@ class ReportServiceTest {
         assertThat(page.getItems()).isEmpty();
         assertThat(page.getPageInfo().hasNext()).isFalse();
         assertThat(page.getPageInfo().nextCursor()).isNull();
+        verifyNoInteractions(reportLikeRepository);
     }
 
     @Test
@@ -413,6 +451,7 @@ class ReportServiceTest {
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> reportService.getReportFeedList(
+                null,
                 CONTENT_ID,
                 YEAR,
                 null,
@@ -440,6 +479,7 @@ class ReportServiceTest {
                         report(festival, 10L, now.minusMinutes(29))));
 
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                null,
                 CONTENT_ID,
                 YEAR,
                 null,
@@ -579,7 +619,7 @@ class ReportServiceTest {
                 festival,
                 LATITUDE,
                 LONGITUDE);
-        Report report = Report.create(
+        Report report = buildReport(
                 user(),
                 location,
                 "제보 " + id,
@@ -605,7 +645,7 @@ class ReportServiceTest {
             CongestionLevel congestionLevel,
             LocalDateTime createdAt
     ) {
-        Report report = Report.create(
+        Report report = buildReport(
                 user(),
                 location,
                 "제보 " + id,
@@ -614,5 +654,35 @@ class ReportServiceTest {
         ReflectionTestUtils.setField(report, "id", id);
         ReflectionTestUtils.setField(report, "createdAt", createdAt);
         return report;
+    }
+
+    private Report buildReport(
+            User user,
+            ReportLocation location,
+            String content,
+            CongestionLevel congestionLevel,
+            String imageUrl
+    ) {
+        return Report.builder()
+                .user(user)
+                .reportLocation(location)
+                .content(content)
+                .congestionLevel(congestionLevel)
+                .imageUrl(imageUrl)
+                .build();
+    }
+
+    private ReportLikeCount likeCount(Long reportId, Long count) {
+        return new ReportLikeCount() {
+            @Override
+            public Long getReportId() {
+                return reportId;
+            }
+
+            @Override
+            public Long getLikeCount() {
+                return count;
+            }
+        };
     }
 }

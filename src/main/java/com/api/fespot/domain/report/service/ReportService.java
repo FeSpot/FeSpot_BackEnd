@@ -7,6 +7,8 @@ import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.repository.ReportLikeCount;
+import com.api.fespot.domain.report.repository.ReportLikeRepository;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.*;
@@ -38,6 +40,7 @@ public class ReportService {
     private final FestivalJpaRepository festivalJpaRepository;
     private final ReportLocationRepository reportLocationRepository;
     private final ReportRepository reportRepository;
+    private final ReportLikeRepository reportLikeRepository;
 
     @Transactional
     public Report createReport(
@@ -121,11 +124,13 @@ public class ReportService {
         Report report = reportRepository.findByUserAndId(user, reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));
 
+        reportLikeRepository.deleteAllByReportId(reportId);
         reportRepository.delete(report);
     }
 
     @Transactional(readOnly = true)
     public CursorPage<ReportFeedRes> getReportFeedList(
+            Long userId,
             String contentId,
             int year,
             Long cursor,
@@ -145,11 +150,42 @@ public class ReportService {
                 ? fetchReports.subList(0, size)
                 : fetchReports;
 
+        //조회 결과가 비어있다면 바로 반환
+        if(pageReports.isEmpty()) {
+            return CursorPage.of(List.of(), null, false);
+        }
+
+        //각 피드별 좋아요 수를 산출
+        /*
+            key : reportId
+            value : likeCount
+         */
+        List<Long> reportIds = pageReports.stream()
+                .map(Report::getId)
+                .toList();
+        Map<Long, Long> likeCountByReportId = new HashMap<>();
+        List<ReportLikeCount> likeCounts = reportLikeRepository.countByReportIds(reportIds);
+
+        for(ReportLikeCount liekeCount : likeCounts) {
+            likeCountByReportId.put(liekeCount.getReportId(), liekeCount.getLikeCount());
+        }
+
+        //현재 사용자가 좋아요한 제보 피드를 조회
+        Set<Long> likedReportIds = new HashSet<>();
+        if(userId != null) {
+            List<Long> likeIds = reportLikeRepository.findLikeReportIds(userId, reportIds);
+            likedReportIds.addAll(likeIds);
+        }
+
         LocalDateTime activeSince = LocalDateTime.now()
                 .minusMinutes(ACTIVE_REPORT_MINUTES);
 
         List<ReportFeedRes> items = pageReports.stream()
-                .map(report -> ReportFeedRes.from(report, activeSince))
+                .map(report -> ReportFeedRes.from(
+                        report,
+                        likeCountByReportId.getOrDefault(report.getId(), 0L),
+                        likedReportIds.contains(report.getId()),
+                        activeSince))
                 .toList();
 
         // 다음 요청에서는 이번에 실제로 반환한 마지막 제보 ID를 전달

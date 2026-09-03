@@ -99,11 +99,11 @@ class ReportRepositoryTest {
         updateCreatedAt(oldest, LocalDateTime.of(2030, 1, 1, 0, 0));
         entityManager.clear();
 
-        List<Report> firstPage = reportRepository.findByUser(
+        List<Report> firstPage = reportRepository.findCursorPageByUser(
                 user,
                 null,
                 Limit.of(2));
-        List<Report> secondPage = reportRepository.findByUser(
+        List<Report> secondPage = reportRepository.findCursorPageByUser(
                 user,
                 middle.getId(),
                 Limit.of(2));
@@ -198,12 +198,13 @@ class ReportRepositoryTest {
             ReportLocation location,
             String content
     ) {
-        return entityManager.persist(Report.create(
-                user,
-                location,
-                content,
-                CongestionLevel.NORMAL,
-                null));
+        return entityManager.persist(Report.builder()
+                .user(user)
+                .reportLocation(location)
+                .content(content)
+                .congestionLevel(CongestionLevel.NORMAL)
+                .imageUrl(null)
+                .build());
     }
 
     private void updateCreatedAt(Report report, LocalDateTime createdAt) {
