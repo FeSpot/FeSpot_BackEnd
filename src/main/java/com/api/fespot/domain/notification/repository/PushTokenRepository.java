@@ -12,8 +12,6 @@ import java.util.Optional;
 public interface PushTokenRepository extends JpaRepository<PushToken, Long> {
     Optional<PushToken> findByToken(String token);
 
-    long deleteByUser_IdAndToken(Long userId, String token);
-
     @Query("""
             select pushToken.token
             from PushToken pushToken
