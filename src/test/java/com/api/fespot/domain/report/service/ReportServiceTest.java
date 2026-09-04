@@ -382,7 +382,7 @@ class ReportServiceTest {
                 .extracting(ReportFeedRes::likedByMe)
                 .containsExactly(false, true);
         assertThat(page.getPageInfo().hasNext()).isTrue();
-        assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
+        assertThat(page.getPageInfo().nextCursor()).isEqualTo("30");
         verify(reportRepository).findFeedByFestival(
                 festival,
                 cursor,
