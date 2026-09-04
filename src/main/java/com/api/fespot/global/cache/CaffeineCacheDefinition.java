@@ -9,7 +9,8 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public enum CaffeineCacheDefinition {
     DAILY_FESTIVAL_FORECAST("dailyFestivalForecast", Duration.ofMinutes(5), 50),
-    FESTIVAL_AREA_FORECAST("festivalAreaForecast", Duration.ofMinutes(5), 50);
+    FESTIVAL_AREA_FORECAST("festivalAreaForecast", Duration.ofMinutes(5), 50),
+    FESTIVALS_BY_YEAR("festivalsByYear", Duration.ofHours(6), 5);
 
     private final String cacheName;
     private final Duration expireAfterWrite; //항목이 생성된 후 또는 해당 값이 바뀐 후 특정 기간이 지나면 각 항목이 캐시에서 자동으로 없어지도록 설정
