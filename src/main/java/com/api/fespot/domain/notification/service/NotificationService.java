@@ -1,6 +1,7 @@
 package com.api.fespot.domain.notification.service;
 
 import com.api.fespot.domain.notification.entity.PushToken;
+import com.api.fespot.domain.notification.repository.PushDeliveryTicketRepository;
 import com.api.fespot.domain.notification.repository.PushTokenRepository;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
@@ -17,6 +18,7 @@ import java.util.List;
 public class NotificationService {
     private final UserRepository userRepository;
     private final PushTokenRepository pushTokenRepository;
+    private final PushDeliveryTicketRepository pushDeliveryTicketRepository;
 
 
     @Transactional
@@ -32,7 +34,16 @@ public class NotificationService {
 
     @Transactional
     public void unregister(Long userId, String token) {
-        pushTokenRepository.deleteByUser_IdAndToken(userId, token);
+        pushTokenRepository.findByToken(token)
+                //유저 확인
+                .filter(pushToken -> pushToken.getUser().getId().equals(userId))
+                .ifPresent(pushToken -> {
+                    //자식 ticket 먼저 삭제
+                    pushDeliveryTicketRepository.deleteAllByPushTokenId(pushToken.getId());
+                    //부모 토큰 삭제
+                    pushTokenRepository.delete(pushToken);
+                });
+
     }
 
     @Transactional(readOnly = true)
