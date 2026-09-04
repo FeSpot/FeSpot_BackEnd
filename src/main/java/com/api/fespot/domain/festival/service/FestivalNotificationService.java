@@ -6,6 +6,7 @@ import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalNotificationRepository;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.code.ErrorResponseCode;
@@ -31,7 +32,7 @@ public class FestivalNotificationService {
     ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(
-                        ErrorResponseCode.UNAUTHORIZED));
+                        UserErrorResponseCode.USER_NOT_FOUND_404));
 
         Festival festival = festivalJpaRepository
                 .findByContentIdAndYear(contentId, year)

@@ -152,7 +152,7 @@ public class ReportService {
 
         //조회 결과가 비어있다면 바로 반환
         if(pageReports.isEmpty()) {
-            return CursorPage.of(List.of(), null, false);
+            return CursorPage.empty();
         }
 
         //각 피드별 좋아요 수를 산출
@@ -251,7 +251,7 @@ public class ReportService {
 
     private User getUserOrThrow(Long userId){
         return userRepository.findById(userId)
-                .orElseThrow(()-> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+                .orElseThrow(()-> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
     }
 
     private void validateUpdateRequest(UpdateMyReportReq req) {

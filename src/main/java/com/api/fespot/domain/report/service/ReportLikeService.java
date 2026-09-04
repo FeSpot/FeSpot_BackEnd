@@ -6,6 +6,7 @@ import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.report.repository.ReportLikeRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.code.ErrorResponseCode;
@@ -25,7 +26,7 @@ public class ReportLikeService {
 
     public void updateReportLike(Long userId, Long reportId, boolean liked) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()-> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+                .orElseThrow(()-> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(()-> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));

@@ -4,6 +4,7 @@ import com.api.fespot.domain.notification.entity.PushToken;
 import com.api.fespot.domain.notification.repository.PushDeliveryTicketRepository;
 import com.api.fespot.domain.notification.repository.PushTokenRepository;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.code.ErrorResponseCode;
@@ -23,7 +24,7 @@ public class NotificationService {
 
     @Transactional
     public void register(Long userId, String token) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+        User user = userRepository.findById(userId).orElseThrow(() -> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         pushTokenRepository.findByToken(token)
                 .ifPresentOrElse(
