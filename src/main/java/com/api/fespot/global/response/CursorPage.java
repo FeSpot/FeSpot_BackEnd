@@ -24,11 +24,19 @@ public class CursorPage<T> {
     }
 
     public record PageInfo(
-            Long nextCursor,
+            String nextCursor,
             Boolean hasNext
-    ) {}
+    ) {
+        public static PageInfo of(String nextCursor, Boolean hasNext) {
+            return new PageInfo(nextCursor, hasNext);
+        }
+    }
 
     public static <T> CursorPage<T> of(List<T> items, Long nextCursor, Boolean hasNext) {
+        return new CursorPage<>(items, new PageInfo(toCursorString(nextCursor), hasNext));
+    }
+
+    public static <T> CursorPage<T> of(List<T> items, String nextCursor, Boolean hasNext) {
         return new CursorPage<>(items, new PageInfo(nextCursor, hasNext));
     }
 
@@ -37,7 +45,7 @@ public class CursorPage<T> {
     }
 
     public static <T> CursorPage<T> ofHasNext(List<T> items, Long nextCursor) {
-        return new CursorPage<>(items, new PageInfo(nextCursor, true));
+        return new CursorPage<>(items, new PageInfo(toCursorString(nextCursor), true));
     }
 
     public static <T> CursorPage<T> ofLastPage(List<T> items) {
@@ -46,5 +54,9 @@ public class CursorPage<T> {
 
     public static <T> CursorPage<T> empty() {
         return new CursorPage<>(Collections.emptyList(), new PageInfo(null, false));
+    }
+
+    private static String toCursorString(Long nextCursor) {
+        return nextCursor == null ? null : String.valueOf(nextCursor);
     }
 }
