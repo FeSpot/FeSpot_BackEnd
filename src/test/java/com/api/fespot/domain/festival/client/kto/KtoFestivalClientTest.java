@@ -125,6 +125,7 @@ class KtoFestivalClientTest {
                           "eventstartdate": "20260801",
                           "eventenddate": "20260803",
                           "playtime": "19:00~22:00",
+                          "program": "개막식 및 해변 공연",
                           "sponsor1tel": "051-000-0000"
                         }
                         """), MediaType.APPLICATION_JSON));
@@ -138,6 +139,7 @@ class KtoFestivalClientTest {
         assertThat(result.startDate()).isEqualTo(LocalDate.of(2026, 8, 1));
         assertThat(result.endDate()).isEqualTo(LocalDate.of(2026, 8, 3));
         assertThat(result.operatingHours()).isEqualTo("19:00~22:00");
+        assertThat(result.program()).isEqualTo("개막식 및 해변 공연");
         assertThat(result.imageUrl()).isEqualTo("https://example.com/sea-festival.jpg");
         assertThat(result.imageCopyrightType()).isEqualTo("Type1");
         assertThat(result.fetchedAt()).isNotNull();
@@ -191,6 +193,7 @@ class KtoFestivalClientTest {
         assertThat(result.place()).isNull();
         assertThat(result.startDate()).isNull();
         assertThat(result.operatingHours()).isNull();
+        assertThat(result.program()).isNull();
         server.verify();
     }
 
@@ -211,7 +214,8 @@ class KtoFestivalClientTest {
                           "contentid": "100",
                           "contenttypeid": "15",
                           "eventplace": " ",
-                          "playtime": ""
+                          "playtime": "",
+                          "program": " "
                         }
                         """), MediaType.APPLICATION_JSON));
 
@@ -219,6 +223,7 @@ class KtoFestivalClientTest {
 
         assertThat(result.place()).isNull();
         assertThat(result.operatingHours()).isNull();
+        assertThat(result.program()).isNull();
         assertThat(result.imageCopyrightType()).isNull();
         server.verify();
     }

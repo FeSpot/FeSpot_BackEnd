@@ -10,15 +10,19 @@ public record ReportFeedRes(
         String imageUrl,
         CongestionLevel congestionLevel,
         String description,
+        long likeCount,
+        boolean likedByMe,
         LocalDateTime createdAt,
         boolean expired
 ) {
-    public static ReportFeedRes from(Report report, LocalDateTime activeSince) {
+    public static ReportFeedRes from(Report report, long likeCount, boolean likedByMe, LocalDateTime activeSince) {
         return new ReportFeedRes(
                 report.getId(),
                 report.getImageUrl(),
                 report.getCongestionLevel(),
                 report.getContent(),
+                likeCount,
+                likedByMe,
                 report.getCreatedAt(),
                 report.getCreatedAt().isBefore(activeSince)
         );

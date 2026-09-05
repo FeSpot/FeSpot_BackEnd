@@ -14,6 +14,7 @@ public record FestivalDetailReadModel(
         LocalDate startDate,
         LocalDate endDate,
         String operatingHours,
+        String program,
         String imageUrl,
         String imageCopyrightType,
         String source,

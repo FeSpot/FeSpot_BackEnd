@@ -1,21 +1,28 @@
 package com.api.fespot.domain.report.web.controller;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
+import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.service.ReportLikeService;
 import com.api.fespot.domain.report.service.ReportService;
+import com.api.fespot.domain.report.web.dto.MyReportRes;
 import com.api.fespot.domain.report.web.dto.ReportCreateReq;
 import com.api.fespot.domain.report.web.dto.ReportFeedRes;
 import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
 import com.api.fespot.global.config.SecurityConfig;
+import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.security.AuthPrincipal;
 import com.api.fespot.global.security.handler.JwtAccessDeniedHandler;
@@ -54,6 +61,9 @@ class ReportControllerTest {
 
     @MockitoBean
     private ReportService reportService;
+
+    @MockitoBean
+    private ReportLikeService reportLikeService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -148,21 +158,20 @@ class ReportControllerTest {
     }
 
     @Test
-    void allowsGuestToReadReportFeedWithDefaultPagination() throws Exception {
-        ReportFeedRes item = new ReportFeedRes(
+    void readsMyReportsWithDefaultPagination() throws Exception {
+        authenticate();
+        MyReportRes item = new MyReportRes(
                 101L,
                 "https://example.com/report.jpg",
                 CongestionLevel.CROWDED,
                 "메인 무대 앞이 매우 혼잡해요.",
                 LocalDateTime.of(2026, 8, 22, 12, 30),
                 false);
-        CursorPage<ReportFeedRes> response = CursorPage.ofLastPage(List.of(item));
-        given(reportService.getReportFeedList("100", 2026, null, 10))
-                .willReturn(response);
+        CursorPage<MyReportRes> response = CursorPage.ofLastPage(List.of(item));
+        given(reportService.getMyReports(1L, null, 10)).willReturn(response);
 
-        mockMvc.perform(get("/reports/feed")
-                        .param("contentId", "100")
-                        .param("year", "2026"))
+        mockMvc.perform(get("/reports/my")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("SUCCESS_200"))
@@ -180,30 +189,29 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.pageInfo.nextCursor").doesNotExist())
                 .andExpect(jsonPath("$.data.pageInfo.hasNext").value(false));
 
-        verify(reportService).getReportFeedList("100", 2026, null, 10);
+        verify(reportService).getMyReports(1L, null, 10);
     }
 
     @Test
-    void readsReportFeedWithRequestedCursorAndSize() throws Exception {
-        ReportFeedRes item = new ReportFeedRes(
+    void readsMyReportsWithRequestedCursorAndSize() throws Exception {
+        authenticate();
+        MyReportRes item = new MyReportRes(
                 95L,
                 null,
                 CongestionLevel.NORMAL,
                 "입구 줄이 길어요.",
                 LocalDateTime.of(2026, 8, 22, 12, 0),
                 true);
-        CursorPage<ReportFeedRes> response = CursorPage.of(
+        CursorPage<MyReportRes> response = CursorPage.of(
                 List.of(item),
                 95L,
                 true);
-        given(reportService.getReportFeedList("100", 2026, 100L, 5))
-                .willReturn(response);
+        given(reportService.getMyReports(1L, 100L, 5)).willReturn(response);
 
-        mockMvc.perform(get("/reports/feed")
-                        .param("contentId", "100")
-                        .param("year", "2026")
+        mockMvc.perform(get("/reports/my")
                         .param("cursor", "100")
-                        .param("size", "5"))
+                        .param("size", "5")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].reportId").value(95))
                 .andExpect(jsonPath("$.data.items[0].imageUrl").doesNotExist())
@@ -211,7 +219,226 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.pageInfo.nextCursor").value(95))
                 .andExpect(jsonPath("$.data.pageInfo.hasNext").value(true));
 
-        verify(reportService).getReportFeedList("100", 2026, 100L, 5);
+        verify(reportService).getMyReports(1L, 100L, 5);
+    }
+
+    @Test
+    void rejectsMyReportsWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/reports/my"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("GLOBAL_401"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    void rejectsNonPositiveMyReportsCursor(long cursor) throws Exception {
+        authenticate();
+
+        mockMvc.perform(get("/reports/my")
+                        .param("cursor", Long.toString(cursor))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 16})
+    void rejectsMyReportsSizeOutsideAllowedRange(int size) throws Exception {
+        authenticate();
+
+        mockMvc.perform(get("/reports/my")
+                        .param("size", Integer.toString(size))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @Test
+    void deletesMyReportForAuthenticatedUser() throws Exception {
+        authenticate();
+
+        mockMvc.perform(delete("/reports/my/{reportId}", 101L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS_200"))
+                .andExpect(jsonPath("$.httpStatus").value(200))
+                .andExpect(jsonPath("$.message").value("삭제되었습니다."))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(reportService).deleteMyReport(1L, 101L);
+    }
+
+    @Test
+    void returnsNotFoundWhenMyReportCannotBeDeleted() throws Exception {
+        authenticate();
+        willThrow(new CustomException(
+                ReportErrorResponseCode.REPORT_NOT_FOUND_404))
+                .given(reportService)
+                .deleteMyReport(1L, 999L);
+
+        mockMvc.perform(delete("/reports/my/{reportId}", 999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("REPORT_NOT_FOUND_404"))
+                .andExpect(jsonPath("$.httpStatus").value(404))
+                .andExpect(jsonPath("$.message").value("제보를 찾을 수 없습니다."));
+
+        verify(reportService).deleteMyReport(1L, 999L);
+    }
+
+    @Test
+    void rejectsDeletingMyReportWithoutAuthentication() throws Exception {
+        mockMvc.perform(delete("/reports/my/{reportId}", 101L))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("GLOBAL_401"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @Test
+    void rejectsDeletingMyReportWithNonNumericId() throws Exception {
+        authenticate();
+
+        mockMvc.perform(delete("/reports/my/not-a-number")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @Test
+    void allowsGuestToReadReportFeedWithDefaultPagination() throws Exception {
+        ReportFeedRes item = guestReportFeed(
+                101L,
+                "https://example.com/report.jpg",
+                CongestionLevel.CROWDED,
+                "메인 무대 앞이 매우 혼잡해요.",
+                LocalDateTime.of(2026, 8, 22, 12, 30),
+                false);
+        CursorPage<ReportFeedRes> response = CursorPage.ofLastPage(List.of(item));
+        given(reportService.getReportFeedList(
+                null,
+                "100",
+                2026,
+                null,
+                10))
+                .willReturn(response);
+
+        mockMvc.perform(get("/reports/feed")
+                        .param("contentId", "100")
+                        .param("year", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("SUCCESS_200"))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].reportId").value(101))
+                .andExpect(jsonPath("$.data.items[0].imageUrl")
+                        .value("https://example.com/report.jpg"))
+                .andExpect(jsonPath("$.data.items[0].congestionLevel")
+                        .value("CROWDED"))
+                .andExpect(jsonPath("$.data.items[0].likeCount").value(3))
+                .andExpect(jsonPath("$.data.items[0].likedByMe").value(false))
+                .andExpect(jsonPath("$.data.items[0].description")
+                        .value("메인 무대 앞이 매우 혼잡해요."))
+                .andExpect(jsonPath("$.data.items[0].createdAt")
+                        .value("2026-08-22T12:30:00"))
+                .andExpect(jsonPath("$.data.items[0].expired").value(false))
+                .andExpect(jsonPath("$.data.pageInfo.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.data.pageInfo.hasNext").value(false));
+
+        verify(reportService).getReportFeedList(null, "100", 2026, null, 10);
+    }
+
+    @Test
+    void allowsAuthenticatedUserToReadPersonalizedReportFeed() throws Exception {
+        authenticate();
+        ReportFeedRes item = new ReportFeedRes(
+                95L,
+                null,
+                CongestionLevel.NORMAL,
+                "입구 줄이 길어요.",
+                4L,
+                true,
+                LocalDateTime.of(2026, 8, 22, 12, 0),
+                true);
+        CursorPage<ReportFeedRes> response = CursorPage.of(
+                List.of(item),
+                95L,
+                true);
+        given(reportService.getReportFeedList(1L, "100", 2026, 100L, 5))
+                .willReturn(response);
+
+        mockMvc.perform(get("/reports/feed")
+                        .param("contentId", "100")
+                        .param("year", "2026")
+                        .param("cursor", "100")
+                        .param("size", "5")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].reportId").value(95))
+                .andExpect(jsonPath("$.data.items[0].imageUrl").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].likeCount").value(4))
+                .andExpect(jsonPath("$.data.items[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.data.items[0].expired").value(true))
+                .andExpect(jsonPath("$.data.pageInfo.nextCursor").value(95))
+                .andExpect(jsonPath("$.data.pageInfo.hasNext").value(true));
+
+        verify(reportService).getReportFeedList(1L, "100", 2026, 100L, 5);
+    }
+
+    @Test
+    void updatesReportLikeForAuthenticatedUser() throws Exception {
+        authenticate();
+
+        mockMvc.perform(put("/reports/{reportId}/like", 101L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "liked": true
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        verify(reportLikeService).updateReportLike(1L, 101L, true);
+    }
+
+    @Test
+    void rejectsReportLikeWithoutAuthentication() throws Exception {
+        mockMvc.perform(put("/reports/{reportId}/like", 101L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "liked": true
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("GLOBAL_401"));
+
+        verifyNoInteractions(reportLikeService);
+    }
+
+    @Test
+    void rejectsReportLikeWhenLikedIsMissing() throws Exception {
+        authenticate();
+
+        mockMvc.perform(put("/reports/{reportId}/like", 101L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_BODY"));
+
+        verifyNoInteractions(reportLikeService);
     }
 
     @ParameterizedTest
@@ -322,6 +549,25 @@ class ReportControllerTest {
         given(jwtTokenProvider.validateToken("access-token")).willReturn(true);
         given(jwtTokenProvider.getAuthentication("access-token"))
                 .willReturn(authentication);
+    }
+
+    private ReportFeedRes guestReportFeed(
+            Long reportId,
+            String imageUrl,
+            CongestionLevel congestionLevel,
+            String description,
+            LocalDateTime createdAt,
+            boolean expired
+    ) {
+        return new ReportFeedRes(
+                reportId,
+                imageUrl,
+                congestionLevel,
+                description,
+                3L,
+                false,
+                createdAt,
+                expired);
     }
 
     private String validRequestBody() {

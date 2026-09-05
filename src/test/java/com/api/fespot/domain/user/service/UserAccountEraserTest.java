@@ -11,6 +11,7 @@ import com.api.fespot.domain.auth.entity.LocalCredential;
 import com.api.fespot.domain.auth.repository.jpa.CredentialRepository;
 import com.api.fespot.domain.festival.repository.FestivalLikeRepository;
 import com.api.fespot.domain.festival.repository.FestivalNotificationRepository;
+import com.api.fespot.domain.notification.repository.PushTokenRepository;
 import com.api.fespot.domain.plan.repository.VisitPlaceRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.user.entity.User;
@@ -32,6 +33,7 @@ class UserAccountEraserTest {
     private final FestivalNotificationRepository festivalNotificationRepository =
             mock(FestivalNotificationRepository.class);
     private final CredentialRepository credentialRepository = mock(CredentialRepository.class);
+    private final PushTokenRepository pushTokenRepository = mock(PushTokenRepository.class);
 
     private final UserAccountEraser userAccountEraser = new UserAccountEraser(
             userRepository,
@@ -39,7 +41,8 @@ class UserAccountEraserTest {
             visitPlanRepository,
             festivalLikeRepository,
             festivalNotificationRepository,
-            credentialRepository);
+            credentialRepository,
+            pushTokenRepository);
 
     @Test
     void erasesDependentRowsBeforeUser() {
@@ -52,11 +55,13 @@ class UserAccountEraserTest {
 
         InOrder inOrder = Mockito.inOrder(
                 visitPlaceRepository, visitPlanRepository, festivalLikeRepository,
-                festivalNotificationRepository, credentialRepository, userRepository);
+                festivalNotificationRepository, pushTokenRepository,
+                credentialRepository, userRepository);
         inOrder.verify(visitPlaceRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(visitPlanRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(festivalLikeRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(festivalNotificationRepository).deleteAllByUserId(USER_ID);
+        inOrder.verify(pushTokenRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(credentialRepository).delete(credential);
         inOrder.verify(userRepository).delete(user);
     }
@@ -82,5 +87,6 @@ class UserAccountEraserTest {
 
         verify(userRepository, never()).delete(any(User.class));
         verify(visitPlanRepository, never()).deleteAllByUserId(USER_ID);
+        verify(pushTokenRepository, never()).deleteAllByUserId(USER_ID);
     }
 }

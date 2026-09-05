@@ -1,10 +1,9 @@
 package com.api.fespot.domain.report.web.controller;
 
 import com.api.fespot.domain.report.entity.Report;
+import com.api.fespot.domain.report.service.ReportLikeService;
 import com.api.fespot.domain.report.service.ReportService;
-import com.api.fespot.domain.report.web.dto.ReportCreateReq;
-import com.api.fespot.domain.report.web.dto.ReportFeedRes;
-import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
+import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.SuccessResponse;
 import com.api.fespot.global.security.AuthPrincipal;
@@ -29,6 +28,7 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ReportLikeService reportLikeService;
 
     @Operation(summary = "제보 등록")
     @PostMapping
@@ -54,9 +54,56 @@ public class ReportController {
                 .body(SuccessResponse.create(report.getId()));
     }
 
+    @Operation(summary = "나의 제보 조회")
+    @GetMapping("/my")
+    public ResponseEntity<SuccessResponse<CursorPage<MyReportRes>>> getMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+
+            @RequestParam(required = false)
+            @Positive(message = "cursor는 양수여야 합니다")
+            Long cursor,
+
+            @RequestParam(defaultValue = "10")
+            @Min(value = 1, message = "size는 1 이상이어야 합니다")
+            @Max(value = 15, message = "size는 15이하여야 합니다")
+            int size
+    ){
+        CursorPage<MyReportRes> response = reportService.getMyReports(authPrincipal.getId(), cursor, size);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "나의 제보 수정")
+    @PatchMapping("/my/{reportId}")
+    public ResponseEntity<SuccessResponse<?>> updateMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId,
+            @Valid @RequestBody UpdateMyReportReq req
+            ){
+        reportService.updateMyReport(authPrincipal.getId(), reportId, req);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("수정되었습니다."));
+    }
+
+    @Operation(summary = "나의 제보 삭제")
+    @DeleteMapping("/my/{reportId}")
+    public ResponseEntity<SuccessResponse<?>> deleteMyReports(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId
+    ){
+        reportService.deleteMyReport(authPrincipal.getId(), reportId);
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("삭제되었습니다."));
+    }
+
     @Operation(summary = "제보 피드 조회")
     @GetMapping("/feed")
     public ResponseEntity<SuccessResponse<CursorPage<ReportFeedRes>>> getReportFeed(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+
             @RequestParam
             @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.")
             @Size(max = 64, message = "contentId는 64자 이하여야 합니다.") String contentId,
@@ -66,7 +113,7 @@ public class ReportController {
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year,
 
             @RequestParam(required = false)
-            @Positive(message = "cursor 양수여야 합니다")
+            @Positive(message = "cursor는 양수여야 합니다")
             Long cursor,
 
             @RequestParam(defaultValue = "10")
@@ -74,7 +121,8 @@ public class ReportController {
             @Max(value = 15, message = "size는 15이하여야 합니다")
             int size
     ){
-        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(contentId, year, cursor, size);
+        Long userId = authPrincipal == null ? null : authPrincipal.getId();
+        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(userId, contentId, year, cursor, size);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
@@ -96,5 +144,18 @@ public class ReportController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
+    }
+
+    @Operation(summary = "사용자가 제보피드에 좋아요 설정")
+    @PutMapping("/{reportId}/like")
+    public ResponseEntity<SuccessResponse<?>> updateReportLike(
+            @AuthenticationPrincipal AuthPrincipal authPrincipal,
+            @PathVariable Long reportId,
+            @Valid @RequestBody ReportLikeReq req
+    ){
+        reportLikeService.updateReportLike(authPrincipal.getId(), reportId, req.liked());
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(SuccessResponse.emptyCustom("좋아요 변경 완료"));
     }
 }

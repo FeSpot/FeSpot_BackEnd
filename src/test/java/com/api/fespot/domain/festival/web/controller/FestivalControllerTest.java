@@ -98,6 +98,7 @@ class FestivalControllerTest {
                 LocalDate.of(2026, 8, 1),
                 LocalDate.of(2026, 8, 3),
                 "19:00~22:00",
+                "개막식 및 해변 공연",
                 "https://example.com/sea-festival.jpg",
                 "Type1",
                 "한국관광공사 OpenAPI",
@@ -114,6 +115,7 @@ class FestivalControllerTest {
                 .andExpect(jsonPath("$.data.startDate").value("2026-08-01"))
                 .andExpect(jsonPath("$.data.endDate").value("2026-08-03"))
                 .andExpect(jsonPath("$.data.operatingHours").value("19:00~22:00"))
+                .andExpect(jsonPath("$.data.program").value("개막식 및 해변 공연"))
                 .andExpect(jsonPath("$.data.imageUrl").value("https://example.com/sea-festival.jpg"))
                 .andExpect(jsonPath("$.data.imageCopyrightType").value("Type1"))
                 .andExpect(jsonPath("$.data.source").value("한국관광공사 OpenAPI"))

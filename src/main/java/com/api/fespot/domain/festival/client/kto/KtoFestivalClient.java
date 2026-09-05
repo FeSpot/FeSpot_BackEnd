@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -48,6 +49,7 @@ public class KtoFestivalClient implements FestivalRepository {
     }
 
     //FestivalRepository의 구현체
+    @Cacheable(cacheNames = "festivalsByYear", sync = true)
     @Override
     public List<FestivalSummaryReadModel> findByYear(int year) {
 
@@ -263,6 +265,7 @@ public class KtoFestivalClient implements FestivalRepository {
                 intro == null ? null : parseDate(intro.eventstartdate()),
                 intro == null ? null : parseDate(intro.eventenddate()),
                 intro == null ? null : textOrNull(intro.playtime()),
+                intro == null ? null : textOrNull(intro.program()),
                 firstText(common.firstimage(), common.firstimage2()),
                 textOrNull(common.imageCopyrightType()),
                 DATA_SOURCE,

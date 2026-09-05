@@ -16,7 +16,7 @@ class ReportEntityTest {
         User user = User.create("user@example.com", "사용자");
         ReportLocation location = ReportLocation.create(festival, 35.1532, 129.1187);
 
-        Report report = Report.create(
+        Report report = createReport(
                 user,
                 location,
                 "메인 무대 앞에 사람이 많아요.",
@@ -32,5 +32,21 @@ class ReportEntityTest {
         assertThat(report.getContent()).isEqualTo("메인 무대 앞에 사람이 많아요.");
         assertThat(report.getCongestionLevel()).isEqualTo(CongestionLevel.CROWDED);
         assertThat(report.getImageUrl()).isNull();
+    }
+
+    private Report createReport(
+            User user,
+            ReportLocation location,
+            String content,
+            CongestionLevel congestionLevel,
+            String imageUrl
+    ) {
+        return Report.builder()
+                .user(user)
+                .reportLocation(location)
+                .content(content)
+                .congestionLevel(congestionLevel)
+                .imageUrl(imageUrl)
+                .build();
     }
 }
