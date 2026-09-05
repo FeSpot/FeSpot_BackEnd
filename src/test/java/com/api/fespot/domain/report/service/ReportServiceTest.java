@@ -226,7 +226,7 @@ class ReportServiceTest {
                 .extracting(MyReportRes::reportId)
                 .containsExactly(40L, 30L);
         assertThat(page.getPageInfo().hasNext()).isTrue();
-        assertThat(page.getPageInfo().nextCursor()).isEqualTo(30L);
+        assertThat(page.getPageInfo().nextCursor()).isEqualTo("30");
         verify(reportRepository).findCursorPageByUser(
                 user,
                 cursor,
