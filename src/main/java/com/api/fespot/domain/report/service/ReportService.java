@@ -152,7 +152,7 @@ public class ReportService {
 
         //조회 결과가 비어있다면 바로 반환
         if(pageReports.isEmpty()) {
-            return CursorPage.of(List.of(), null, false);
+            return CursorPage.of(List.of(), (Long) null, false);
         }
 
         //각 피드별 좋아요 수를 산출
