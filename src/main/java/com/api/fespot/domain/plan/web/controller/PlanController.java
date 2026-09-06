@@ -82,7 +82,7 @@ public class PlanController {
                 ));
     }
 
-    @PatchMapping("/{planId}")
+    @PutMapping("/{planId}")
     public ResponseEntity<SuccessResponse<PlanDetailResponse>> updatePlan(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable @NotNull(message = "방문 계획 기본 키는 비어 있을 수 없습니다.") Long planId,
