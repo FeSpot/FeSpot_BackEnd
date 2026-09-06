@@ -33,7 +33,7 @@ public class UserAccountEraser {
 
     @Transactional
     public void erase(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(UserNotFoundException::new);
 
         visitPlaceRepository.deleteAllByUserId(userId);

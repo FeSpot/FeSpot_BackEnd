@@ -52,7 +52,7 @@ class UserAccountEraserTest {
     void erasesDependentRowsBeforeUser() {
         User user = User.create("user@example.com", "user");
         LocalCredential credential = LocalCredential.create(user, "password-hash");
-        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(credentialRepository.findByUser_Id(USER_ID)).willReturn(Optional.of(credential));
 
         userAccountEraser.erase(USER_ID);
@@ -61,6 +61,7 @@ class UserAccountEraserTest {
                 visitPlaceRepository, visitPlanRepository, festivalLikeRepository,
                 festivalNotificationRepository, pushDeliveryTicketRepository, pushTokenRepository,
                 credentialRepository, userRepository);
+        inOrder.verify(userRepository).findByIdForUpdate(USER_ID);
         inOrder.verify(visitPlaceRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(visitPlanRepository).deleteAllByUserId(USER_ID);
         inOrder.verify(festivalLikeRepository).deleteAllByUserId(USER_ID);
@@ -74,7 +75,7 @@ class UserAccountEraserTest {
     @Test
     void erasesUserWithoutCredentialRow() {
         User user = User.create("user@example.com", "user");
-        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(credentialRepository.findByUser_Id(USER_ID)).willReturn(Optional.empty());
 
         userAccountEraser.erase(USER_ID);
@@ -85,7 +86,7 @@ class UserAccountEraserTest {
 
     @Test
     void rejectsUnknownUser() {
-        given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userAccountEraser.erase(USER_ID))
                 .isInstanceOf(UserNotFoundException.class);
