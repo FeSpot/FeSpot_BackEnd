@@ -16,11 +16,6 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
-        uniqueConstraints = @UniqueConstraint(columnNames = {
-                "user_id", "festival_id", "plan_target_date"
-        })
-)
 public class VisitPlan extends BaseEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +23,9 @@ public class VisitPlan extends BaseEntity {
 
     @Column(nullable = false, length = 10)
     private LocalDate planTargetDate;
+
+    @Column(nullable = false, length = 20)
+    private String planName;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -41,8 +39,9 @@ public class VisitPlan extends BaseEntity {
     private List<VisitPlace> places = new ArrayList<>();
 
     @Builder
-    private VisitPlan(LocalDate planTargetDate, User user, Festival festival) {
+    private VisitPlan(LocalDate planTargetDate, String planName, User user, Festival festival) {
         this.planTargetDate = planTargetDate;
+        this.planName = planName;
         this.user = user;
         this.festival = festival;
     }
