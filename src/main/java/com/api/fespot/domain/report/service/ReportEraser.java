@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class ReportCleanupService {
+public class ReportEraser {
 
     private final ReportRepository reportRepository;
     private final ReportLikeRepository reportLikeRepository;
 
-    //좋아요가 제보를 참조하고 있으므로 좋아요를 먼저 지운 뒤 제보를 일괄 삭제한다.
+    // 좋아요 ->---+ 제보이므로 좋아요를 먼저 지운 뒤 제보를 일괄 삭제.
     @Transactional
     public void deleteReports(List<Long> reportIds) {
         if (reportIds.isEmpty()) {

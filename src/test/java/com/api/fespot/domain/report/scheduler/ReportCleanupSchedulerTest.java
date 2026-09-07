@@ -12,7 +12,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.repository.ReportRepository;
-import com.api.fespot.domain.report.service.ReportCleanupService;
+import com.api.fespot.domain.report.service.ReportEraser;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.s3.enums.code.S3ErrorResponseCode;
 import com.api.fespot.global.s3.service.S3DeleteService;
@@ -30,13 +30,13 @@ class ReportCleanupSchedulerTest {
             "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/report/other.jpg";
 
     private final ReportRepository reportRepository = mock(ReportRepository.class);
-    private final ReportCleanupService reportCleanupService =
-            mock(ReportCleanupService.class);
+    private final ReportEraser reportEraser =
+            mock(ReportEraser.class);
     private final S3DeleteService s3DeleteService = mock(S3DeleteService.class);
     private final ReportCleanupScheduler reportCleanupScheduler =
             new ReportCleanupScheduler(
                     reportRepository,
-                    reportCleanupService,
+                    reportEraser,
                     s3DeleteService);
 
     @Test
@@ -50,7 +50,7 @@ class ReportCleanupSchedulerTest {
 
         verify(s3DeleteService).deleteByFileUrl(IMAGE_URL);
         verifyNoMoreInteractions(s3DeleteService);
-        verify(reportCleanupService).deleteReports(List.of(1L, 2L));
+        verify(reportEraser).deleteReports(List.of(1L, 2L));
     }
 
     @Test
@@ -75,7 +75,7 @@ class ReportCleanupSchedulerTest {
 
         reportCleanupScheduler.deleteExpiredReports();
 
-        verifyNoInteractions(s3DeleteService, reportCleanupService);
+        verifyNoInteractions(s3DeleteService, reportEraser);
     }
 
     // 일시적인 S3 오류는 제보를 남겨 다음 주기에 재시도하고, 나머지 제보 삭제는 계속 진행한다.
@@ -91,7 +91,7 @@ class ReportCleanupSchedulerTest {
         reportCleanupScheduler.deleteExpiredReports();
 
         verify(s3DeleteService).deleteByFileUrl(OTHER_IMAGE_URL);
-        verify(reportCleanupService).deleteReports(List.of(2L));
+        verify(reportEraser).deleteReports(List.of(2L));
     }
 
     // 잘못된 URL은 재시도해도 삭제될 수 없으므로 제보는 삭제한다.
@@ -105,7 +105,7 @@ class ReportCleanupSchedulerTest {
 
         reportCleanupScheduler.deleteExpiredReports();
 
-        verify(reportCleanupService).deleteReports(List.of(1L));
+        verify(reportEraser).deleteReports(List.of(1L));
     }
 
     @Test
@@ -117,7 +117,7 @@ class ReportCleanupSchedulerTest {
         reportCleanupScheduler.deleteExpiredReports();
 
         verifyNoInteractions(s3DeleteService);
-        verify(reportCleanupService).deleteReports(List.of(1L));
+        verify(reportEraser).deleteReports(List.of(1L));
     }
 
     private Report report(Long id, String imageUrl) {

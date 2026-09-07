@@ -2,7 +2,7 @@ package com.api.fespot.domain.report.scheduler;
 
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.repository.ReportRepository;
-import com.api.fespot.domain.report.service.ReportCleanupService;
+import com.api.fespot.domain.report.service.ReportEraser;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.s3.enums.code.S3ErrorResponseCode;
 import com.api.fespot.global.s3.service.S3DeleteService;
@@ -23,7 +23,7 @@ public class ReportCleanupScheduler {
     private static final long CLEANUP_INTERVAL_MS = 60_000; //1분마다 실행
 
     private final ReportRepository reportRepository;
-    private final ReportCleanupService reportCleanupService;
+    private final ReportEraser reportEraser;
     private final S3DeleteService s3DeleteService;
 
     /*
@@ -48,7 +48,7 @@ public class ReportCleanupScheduler {
             }
         }
 
-        reportCleanupService.deleteReports(deletableIds);
+        reportEraser.deleteReports(deletableIds);
 
         if (!deletableIds.isEmpty()) {
             log.info("만료 제보 일괄 삭제 완료. expired={}, deleted={}", expiredReports.size(), deletableIds.size());
