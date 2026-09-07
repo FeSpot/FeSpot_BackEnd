@@ -199,6 +199,37 @@ class ReportRepositoryTest {
                 .containsExactly(newestActive.getId(), olderActive.getId());
     }
 
+    // 임계 시각과 같은 제보는 만료로 보지 않고, 그보다 이전에 생성된 제보만 조회한다.
+    @Test
+    void findsOnlyReportsCreatedBeforeThreshold() {
+        Festival festival = entityManager.persist(Festival.create("500", 2026));
+        User user = entityManager.persist(User.create(
+                "cleanup-report@example.com",
+                "사용자"));
+        ReportLocation location = entityManager.persist(ReportLocation.create(
+                festival,
+                "메인 무대",
+                35.1532,
+                129.1187));
+        LocalDateTime threshold = LocalDateTime.of(2026, 8, 23, 12, 0);
+
+        Report expired = persistReport(user, location, "만료된 제보");
+        Report boundary = persistReport(user, location, "경계 제보");
+        Report active = persistReport(user, location, "활성 제보");
+        entityManager.flush();
+        updateCreatedAt(expired, threshold.minusMinutes(1));
+        updateCreatedAt(boundary, threshold);
+        updateCreatedAt(active, threshold.plusMinutes(1));
+        entityManager.clear();
+
+        List<Report> expiredReports =
+                reportRepository.findAllByCreatedAtBefore(threshold);
+
+        assertThat(expiredReports)
+                .extracting(Report::getId)
+                .containsExactly(expired.getId());
+    }
+
     private Report persistReport(
             User user,
             ReportLocation location,
