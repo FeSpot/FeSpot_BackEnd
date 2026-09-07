@@ -11,6 +11,8 @@ public record PlanDetailResponse(
 
         Long planId,
 
+        String planName,
+
         @JsonFormat(shape = JsonFormat.Shape.STRING, locale = "ko", pattern = "E MM.dd")
         LocalDate targetDate,
         List<PlaceBlock> places
@@ -19,6 +21,7 @@ public record PlanDetailResponse(
         return new PlanDetailResponse(
                 visitPlan.getFestival().getContentId(),
                 visitPlan.getId(),
+                visitPlan.getTitle(),
                 visitPlan.getPlanTargetDate(),
                 visitPlan.getPlaces().stream()
                         .map(PlaceBlock::convertToPlaceBlock)

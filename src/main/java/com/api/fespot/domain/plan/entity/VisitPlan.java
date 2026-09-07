@@ -25,7 +25,7 @@ public class VisitPlan extends BaseEntity {
     private LocalDate planTargetDate;
 
     @Column(nullable = false, length = 20)
-    private String planName;
+    private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -39,9 +39,9 @@ public class VisitPlan extends BaseEntity {
     private List<VisitPlace> places = new ArrayList<>();
 
     @Builder
-    private VisitPlan(LocalDate planTargetDate, String planName, User user, Festival festival) {
+    private VisitPlan(LocalDate planTargetDate, String title, User user, Festival festival) {
         this.planTargetDate = planTargetDate;
-        this.planName = planName;
+        this.title = title;
         this.user = user;
         this.festival = festival;
     }

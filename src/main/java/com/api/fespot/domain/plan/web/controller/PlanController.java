@@ -40,7 +40,8 @@ public class PlanController {
             @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(15) Integer size
     ) {
         PlanListResult result = planService.findAllVisitPlans(authPrincipal.getId(), cursor, size);
-        List<PlanListResponse.PlanBlock> planBlocks = PlanListResponse.PlanBlock.convertToPlanBlocks(result.plans());
+
+        List<PlanListResponse.PlanBlock> planBlocks = PlanListResponse.PlanBlock.convertToPlanBlocks(result.plans(), result.festivalNameByContentId());
 
         PlanListResponse response = new PlanListResponse(
                 result.totalCount(),

@@ -15,16 +15,22 @@ public record PlanRequest(
         @NotBlank(message = "축제 식별자 필드는 비어 있을 수 없습니다.", groups = { Create.class, Update.class })
         String contentId,
 
-        @NotNull(message = "축제 개최일 필드는 비어 있을 수 없습니다.", groups = { Create.class, Update.class })
+        @NotBlank(message = "계획 제목 필드는 비어 있을 수 없습니다.", groups = Create.class )
+        String planName,
+
+        @NotNull(message = "축제 개최일 필드는 비어 있을 수 없습니다.", groups = { Create.class })
         @Future(message = "이미 지난 축제는 해당 요청이 불가능합니다.", groups = { Create.class, Update.class })
         LocalDate startDate,
 
-        @NotNull(message = "방문 일자 필드는 비어 있을 수 없습니다.", groups = { Create.class, Update.class })
+        @NotNull(message = "방문 일자 필드는 비어 있을 수 없습니다.", groups = { Create.class })
         @FutureOrPresent(message = "방문 일자는 과거일 수 없습니다.", groups = { Create.class, Update.class })
         LocalDate targetDate,
 
+        /*
+         * create : reject both null and empty array
+         * update : allow null, reject empty array
+         */
         @Valid
-        // 생성: null/빈 배열 모두 거부. 수정: null은 "장소 수정 없음"으로 허용, 빈 배열(전체 삭제)은 거부.
         @NotEmpty(message = "방문 계획 배열은 비어 있을 수 없습니다.", groups = Create.class)
         @Size(min = 1, message = "방문 계획 배열은 비어 있을 수 없습니다.", groups = Update.class)
         List<Plan> plans
@@ -36,7 +42,10 @@ public record PlanRequest(
             LocalTime startAt,
 
             @NotBlank(message = "방문 장소의 이름은 비어 있을 수 없습니다.", groups = Create.class)
-            String name
+            String name,
+
+            @NotBlank(message = "도로명 주소 필드는 비어 있을 수 없습니다.", groups = Create.class)
+            String roadAddress
     ) {
         @AssertTrue(message = "방문 계획의 각 항목 시작 시각에 대해, 분 단위는 5의 배수여야 합니다.", groups = { Create.class, Update.class })
         public boolean isStartedAtIsMultiplesOfFive() {
@@ -50,6 +59,7 @@ public record PlanRequest(
             return VisitPlace.builder()
                     .startAt(startAt())
                     .placeName(name())
+                    .roadAddress(roadAddress())
                     .visitPlan(visitPlan)
                     .build();
         }

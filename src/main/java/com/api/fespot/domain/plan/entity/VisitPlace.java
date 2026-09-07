@@ -31,20 +31,25 @@ public class VisitPlace extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String placeName;
 
+    @Column(nullable = false, length = 100)
+    private String roadAddress;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "visit_plan_id", nullable = false)
     private VisitPlan visitPlan;
 
     @Builder
-    private VisitPlace(LocalTime startAt, String placeName, VisitPlan visitPlan) {
+    private VisitPlace(LocalTime startAt, String placeName, String roadAddress, VisitPlan visitPlan) {
         this.startAt = startAt;
         this.placeName = placeName;
+        this.roadAddress = roadAddress;
         this.visitPlan = visitPlan;
         visitPlan.getPlaces().add(this);
     }
 
-    public void modify(LocalTime startAt, String placeName) {
+    public void modify(LocalTime startAt, String placeName, String roadAddress) {
         this.startAt = startAt;
         this.placeName = placeName;
+        this.roadAddress = roadAddress;
     }
 }
