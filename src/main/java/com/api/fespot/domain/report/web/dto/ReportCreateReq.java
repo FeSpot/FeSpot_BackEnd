@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.validator.constraints.URL;
 
 public record ReportCreateReq(
         @NotNull(message = "위도는 필수입니다.")
@@ -23,6 +24,11 @@ public record ReportCreateReq(
         String content,
 
         @NotNull(message = "혼잡도는 필수입니다.")
-        CongestionLevel congestionLevel
+        CongestionLevel congestionLevel,
+
+        @URL(protocol = "https" , message = "이미지 url은 올바른 HTTPS URL 이어야 합니다.")
+        String imageUrl,
+
+        String signatureName
 ) {
 }
