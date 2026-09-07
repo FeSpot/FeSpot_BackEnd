@@ -47,8 +47,7 @@ public class ReportService {
             Long userId,
             String contentId,
             int year,
-            ReportCreateReq request,
-            String imageUrl
+            ReportCreateReq request
     ) {
         //토큰에서 얻은 사용자 ID로 사용자 조회
         User user = getUserOrThrow(userId);
@@ -67,6 +66,7 @@ public class ReportService {
                 .orElseGet(() -> reportLocationRepository.save(
                         ReportLocation.create(
                                 festival,
+                                request.signatureName(), //이건 추가 해야함 잠시 대기
                                 request.latitude(),
                                 request.longitude())));
 
@@ -75,7 +75,7 @@ public class ReportService {
                 .reportLocation(reportLocation)
                 .content(request.content())
                 .congestionLevel(request.congestionLevel())
-                .imageUrl(imageUrl)
+                .imageUrl(request.imageUrl())
                 .build();
 
         return reportRepository.save(report);
@@ -152,7 +152,7 @@ public class ReportService {
 
         //조회 결과가 비어있다면 바로 반환
         if(pageReports.isEmpty()) {
-            return CursorPage.of(List.of(), null, false);
+            return CursorPage.empty();
         }
 
         //각 피드별 좋아요 수를 산출
