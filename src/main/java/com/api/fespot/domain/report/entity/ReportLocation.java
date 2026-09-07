@@ -30,6 +30,9 @@ public class ReportLocation extends BaseEntity {
     @JoinColumn(name = "festival_id", nullable = false)
     private Festival festival;
 
+    @Column(name = "signature_name", nullable = false)
+    private String signatureName;
+
     @Column(name = "anchor_latitude", nullable = false)
     private double anchorLatitude;
 
@@ -38,19 +41,22 @@ public class ReportLocation extends BaseEntity {
 
     private ReportLocation(
             Festival festival,
+            String signatureName,
             double anchorLatitude,
             double anchorLongitude
     ) {
         this.festival = festival;
+        this.signatureName = signatureName;
         this.anchorLatitude = anchorLatitude;
         this.anchorLongitude = anchorLongitude;
     }
 
     public static ReportLocation create(
             Festival festival,
+            String signatureName,
             double anchorLatitude,
             double anchorLongitude
     ) {
-        return new ReportLocation(festival, anchorLatitude, anchorLongitude);
+        return new ReportLocation(festival, signatureName, anchorLatitude, anchorLongitude);
     }
 }
