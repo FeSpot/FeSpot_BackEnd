@@ -14,7 +14,11 @@ class ReportEntityTest {
     void createsReportLocationAndReport() {
         Festival festival = Festival.create("123456", 2026);
         User user = User.create("user@example.com", "사용자");
-        ReportLocation location = ReportLocation.create(festival, 35.1532, 129.1187);
+        ReportLocation location = ReportLocation.create(
+                festival,
+                "메인 무대",
+                35.1532,
+                129.1187);
 
         Report report = createReport(
                 user,
@@ -25,6 +29,7 @@ class ReportEntityTest {
         );
 
         assertThat(location.getFestival()).isSameAs(festival);
+        assertThat(location.getSignatureName()).isEqualTo("메인 무대");
         assertThat(location.getAnchorLatitude()).isEqualTo(35.1532);
         assertThat(location.getAnchorLongitude()).isEqualTo(129.1187);
         assertThat(report.getUser()).isSameAs(user);
