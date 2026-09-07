@@ -72,7 +72,7 @@ class ReportControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
-    void createsReportWithoutImage() throws Exception {
+    void createsReport() throws Exception {
         authenticate();
         Report savedReport = mock(Report.class);
         given(savedReport.getId()).willReturn(10L);
@@ -80,8 +80,10 @@ class ReportControllerTest {
                 35.1532,
                 129.1187,
                 "메인 무대 앞이 매우 혼잡해요.",
-                CongestionLevel.CROWDED);
-        given(reportService.createReport(1L, "100", 2026, request, null))
+                CongestionLevel.CROWDED,
+                "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
+                "메인 무대");
+        given(reportService.createReport(1L, "100", 2026, request))
                 .willReturn(savedReport);
 
         mockMvc.perform(post("/reports")
@@ -94,7 +96,9 @@ class ReportControllerTest {
                                   "latitude": 35.1532,
                                   "longitude": 129.1187,
                                   "content": "메인 무대 앞이 매우 혼잡해요.",
-                                  "congestionLevel": "CROWDED"
+                                  "congestionLevel": "CROWDED",
+                                  "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
+                                  "signatureName": "메인 무대"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -102,7 +106,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.code").value("SUCCESS_201"))
                 .andExpect(jsonPath("$.data").value(10));
 
-        verify(reportService).createReport(1L, "100", 2026, request, null);
+        verify(reportService).createReport(1L, "100", 2026, request);
     }
 
     @Test
@@ -132,7 +136,9 @@ class ReportControllerTest {
                                   "latitude": 35.1532,
                                   "longitude": 129.1187,
                                   "content": " ",
-                                  "congestionLevel": "CROWDED"
+                                  "congestionLevel": "CROWDED",
+                                  "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
+                                  "signatureName": "메인 무대"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -576,7 +582,9 @@ class ReportControllerTest {
                   "latitude": 35.1532,
                   "longitude": 129.1187,
                   "content": "메인 무대 앞이 매우 혼잡해요.",
-                  "congestionLevel": "CROWDED"
+                  "congestionLevel": "CROWDED",
+                  "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
+                  "signatureName": "메인 무대"
                 }
                 """;
     }

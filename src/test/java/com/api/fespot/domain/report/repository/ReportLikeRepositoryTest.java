@@ -49,6 +49,7 @@ class ReportLikeRepositoryTest {
                 "두번째 사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         Report firstReport = persistReport(firstUser, location, "첫 번째 제보");
@@ -91,6 +92,7 @@ class ReportLikeRepositoryTest {
                 "사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         Report report = persistReport(user, location, "제보");

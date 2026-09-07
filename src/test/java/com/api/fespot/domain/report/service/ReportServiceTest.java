@@ -48,6 +48,7 @@ class ReportServiceTest {
     private static final double LATITUDE = 35.1532;
     private static final double LONGITUDE = 129.1187;
     private static final String IMAGE_URL = "https://example.com/report.jpg";
+    private static final String SIGNATURE_NAME = "메인 무대";
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final FestivalJpaRepository festivalJpaRepository =
@@ -84,14 +85,14 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                IMAGE_URL);
+                request());
 
         ArgumentCaptor<ReportLocation> locationCaptor =
                 ArgumentCaptor.forClass(ReportLocation.class);
         verify(reportLocationRepository).save(locationCaptor.capture());
         ReportLocation savedLocation = locationCaptor.getValue();
         assertThat(savedLocation.getFestival()).isSameAs(festival);
+        assertThat(savedLocation.getSignatureName()).isEqualTo(SIGNATURE_NAME);
         assertThat(savedLocation.getAnchorLatitude()).isEqualTo(LATITUDE);
         assertThat(savedLocation.getAnchorLongitude()).isEqualTo(LONGITUDE);
         assertThat(report.getUser()).isSameAs(user);
@@ -105,10 +106,12 @@ class ReportServiceTest {
         Festival festival = festival();
         ReportLocation nearest = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE + 0.00005,
                 LONGITUDE);
         ReportLocation farther = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE + 0.00015,
                 LONGITUDE);
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
@@ -125,8 +128,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null);
+                request());
 
         assertThat(report.getReportLocation()).isSameAs(nearest);
         verify(reportLocationRepository, never()).save(any(ReportLocation.class));
@@ -143,6 +145,7 @@ class ReportServiceTest {
                 any(LocalDateTime.class)))
                 .willReturn(List.of(ReportLocation.create(
                         festival,
+                        SIGNATURE_NAME,
                         LATITUDE + 0.001,
                         LONGITUDE)));
         given(reportLocationRepository.save(any(ReportLocation.class)))
@@ -154,8 +157,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null);
+                request());
 
         verify(reportLocationRepository).save(any(ReportLocation.class));
     }
@@ -168,8 +170,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null))
+                request()))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
                                 .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
@@ -190,8 +191,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null))
+                request()))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
                                 .isEqualTo(
@@ -603,7 +603,9 @@ class ReportServiceTest {
                 LATITUDE,
                 LONGITUDE,
                 "메인 무대 앞에 사람이 많아요.",
-                CongestionLevel.CROWDED);
+                CongestionLevel.CROWDED,
+                IMAGE_URL,
+                SIGNATURE_NAME);
     }
 
     private User user() {
@@ -617,6 +619,7 @@ class ReportServiceTest {
     private Report report(Festival festival, Long id, LocalDateTime createdAt) {
         ReportLocation location = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE,
                 LONGITUDE);
         Report report = buildReport(
@@ -633,6 +636,7 @@ class ReportServiceTest {
     private ReportLocation reportLocation(Festival festival, Long id) {
         ReportLocation location = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE,
                 LONGITUDE);
         ReflectionTestUtils.setField(location, "id", id);
