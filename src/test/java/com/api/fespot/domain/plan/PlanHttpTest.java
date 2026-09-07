@@ -1,6 +1,8 @@
 package com.api.fespot.domain.plan;
 
+import com.api.fespot.domain.festival.client.kto.KtoFestivalClient;
 import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.repository.VisitPlanRepository;
 import com.api.fespot.domain.user.entity.User;
@@ -17,16 +19,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -58,6 +64,9 @@ public class PlanHttpTest {
     @Autowired private FestivalJpaRepository festivalJpaRepository;
     @Autowired private VisitPlanRepository visitPlanRepository;
 
+    // 목록 조회가 KTO OpenAPI에서 축제 이름을 바인딩하므로 외부 호출을 목으로 대체한다.
+    @MockitoBean private KtoFestivalClient ktoFestivalClient;
+
     private User user;
     private String accessToken;
 
@@ -69,6 +78,11 @@ public class PlanHttpTest {
         user = userRepository.save(User.create("plan-http-test@fespot.com", "passwordHash"));
         festivalJpaRepository.save(Festival.create("1", LocalDate.now().plusDays(2).getYear()));
         accessToken = createAccessToken(user);
+
+        when(ktoFestivalClient.findByYear(anyInt())).thenReturn(List.of(
+                new FestivalSummaryReadModel(
+                        "1", "테스트 축제", null, null, null, null, null, "테스트", Instant.now())
+        ));
     }
 
     // RANDOM_PORT 방식은 서버 스레드에서 트랜잭션이 커밋되므로 테스트마다 직접 정리한다.
@@ -86,11 +100,13 @@ public class PlanHttpTest {
     private Map<String, Object> validCreateBody() {
         return Map.of(
                 "contentId", "1",
+                "planName", "나의 계획",
                 "startDate", LocalDate.now().plusDays(2).toString(),
                 "targetDate", LocalDate.now().plusDays(1).toString(),
                 "plans", List.of(Map.of(
                         "startAt", "10:30:00",
-                        "name", "카페 A"
+                        "name", "카페 A",
+                        "roadAddress", "도로명 주소 1"
                 ))
         );
     }
@@ -112,6 +128,7 @@ public class PlanHttpTest {
                 .header("Location", startsWith("/my/plan/"))
                 .body("isSuccess", equalTo(true))
                 .body("data.planId", notNullValue())
+                .body("data.planName", equalTo("나의 계획"))
                 .body("data.places", hasSize(1))
                 .body("data.places[0].placeName", equalTo("카페 A"))
                 // @JsonFormat(locale = ko_KR, pattern = "E MM.dd") 직렬화 검증
@@ -209,6 +226,8 @@ public class PlanHttpTest {
                 .body("data.totalCount", equalTo(1))
                 .body("data.plans.items", hasSize(1))
                 .body("data.plans.items[0].planId", equalTo(planId.intValue()))
+                .body("data.plans.items[0].planName", equalTo("나의 계획"))
+                .body("data.plans.items[0].festivalName", equalTo("테스트 축제"))
                 .body("data.plans.pageInfo.hasNext", equalTo(false));
     }
 
@@ -232,7 +251,7 @@ public class PlanHttpTest {
                                 "name", "수정된 카페"
                         ))
                 ))
-                .patch("/my/plan/" + planId)
+                .put("/my/plan/" + planId)
                 .then()
                 .statusCode(200)
                 .body("isSuccess", equalTo(true))
@@ -252,7 +271,7 @@ public class PlanHttpTest {
                         "startDate", LocalDate.now().plusDays(2).toString(),
                         "targetDate", LocalDate.now().plusDays(1).toString()
                 ))
-                .patch("/my/plan/" + planId)
+                .put("/my/plan/" + planId)
                 .then()
                 .statusCode(200)
                 .body("isSuccess", equalTo(true))
@@ -273,7 +292,7 @@ public class PlanHttpTest {
                         "targetDate", LocalDate.now().plusDays(1).toString(),
                         "plans", List.of()
                 ))
-                .patch("/my/plan/" + planId)
+                .put("/my/plan/" + planId)
                 .then()
                 .statusCode(400)
                 .body("code", equalTo("GLOBAL_400_BODY"))
