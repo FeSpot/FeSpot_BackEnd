@@ -121,4 +121,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("now") LocalDateTime now,
             @Param("minimumLikeCount") long minimumLikeCount
     );
+
+    List<Report> findAllByCreatedAtBefore(LocalDateTime threshold);
 }
