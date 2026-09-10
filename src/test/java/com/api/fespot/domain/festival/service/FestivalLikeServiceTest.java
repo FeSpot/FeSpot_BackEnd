@@ -15,9 +15,9 @@ import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalLikeRepository;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
-import com.api.fespot.global.response.code.ErrorResponseCode;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -128,7 +128,7 @@ class FestivalLikeServiceTest {
                 festivalLikeService.updateLike(USER_ID, CONTENT_ID, YEAR, true))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
-                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+                                .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         verifyNoInteractions(
                 festivalJpaRepository,
