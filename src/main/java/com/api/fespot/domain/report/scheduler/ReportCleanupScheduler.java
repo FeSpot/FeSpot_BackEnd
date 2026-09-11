@@ -1,6 +1,7 @@
 package com.api.fespot.domain.report.scheduler;
 
-import com.api.fespot.domain.report.entity.Report;
+import com.api.fespot.domain.report.entity.ReportLocation;
+import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.service.ReportEraser;
 import com.api.fespot.global.exception.CustomException;
@@ -23,6 +24,7 @@ public class ReportCleanupScheduler {
     private static final long CLEANUP_INTERVAL_MS = 60_000; //1분마다 실행
 
     private final ReportRepository reportRepository;
+    private final ReportLocationRepository reportLocationRepository;
     private final ReportEraser reportEraser;
     private final S3DeleteService s3DeleteService;
 
@@ -36,45 +38,49 @@ public class ReportCleanupScheduler {
     public void deleteExpiredReports() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(EXPIRE_MINUTES);
 
-        List<Report> expiredReports = reportRepository.findAllByCreatedAtBefore(threshold);
-        if (expiredReports.isEmpty()) {
+        List<ReportLocation> expiredReportLocations = reportLocationRepository.findAllByLastReportedAtBefore(threshold);
+        if (expiredReportLocations.isEmpty()) {
             return;
         }
 
         List<Long> deletableIds = new ArrayList<>();
-        for (Report report : expiredReports) {
-            if (deleteImageIfPresent(report)) {
-                deletableIds.add(report.getId());
+        for (ReportLocation reportLocation : expiredReportLocations) {
+            if (deleteImageIfPresent(reportLocation)) {
+                deletableIds.add(reportLocation.getId());
             }
         }
 
         reportEraser.deleteReports(deletableIds);
 
         if (!deletableIds.isEmpty()) {
-            log.info("만료 제보 일괄 삭제 완료. expired={}, deleted={}", expiredReports.size(), deletableIds.size());
+            log.info("만료 제보 일괄 삭제 완료. expired={}, deleted={}", expiredReportLocations.size(), deletableIds.size());
         }
     }
 
     //이미지 삭제에 성공해 제보를 삭제해도 되는 경우 true를 반환한다.
-    private boolean deleteImageIfPresent(Report report) {
-        String imageUrl = report.getImageUrl();
-        if (imageUrl == null || imageUrl.isBlank()) {
+    private boolean deleteImageIfPresent(ReportLocation reportLocation) {
+        List<String> imageUrls = reportRepository.findImageUrlsByReportLocationId(reportLocation.getId());
+        if (imageUrls.isEmpty()) {
             return true;
         }
 
-        try {
-            s3DeleteService.deleteByFileUrl(imageUrl);
-            return true;
-        } catch (CustomException e) {
-            //잘못된 URL은 재시도해도 삭제될 수 없으므로 제보만 삭제하고 넘어간다.
-            if (e.getBaseResponseCode() == S3ErrorResponseCode.INVALID_FILE_URL) {
-                log.warn("만료 제보의 이미지 URL이 유효하지 않아 제보만 삭제. reportId={}, imageUrl={}",
-                        report.getId(), imageUrl);
-                return true;
+        boolean allHandled = true;
+
+        for (String url : imageUrls) {
+            try {
+                s3DeleteService.deleteByFileUrl(url);
+            } catch (CustomException e) {
+                //잘못된 URL은 재시도해도 삭제될 수 없으므로 제보만 삭제하고 넘어간다.
+                if (e.getBaseResponseCode() == S3ErrorResponseCode.INVALID_FILE_URL) {
+                    log.warn("만료 제보의 이미지 URL이 유효하지 않아 제보만 삭제. report_location_id={}, imageUrl={}",
+                            reportLocation.getId(), url);
+                    continue;
+                }
+                //일시적인 S3 오류는 제보를 남겨두고 다음 주기에 재시도한다.
+                log.error("만료 제보의 S3 이미지 삭제 실패. 다음 주기에 재시도. report_location_id={}", reportLocation.getId());
+                allHandled = false;
             }
-            //일시적인 S3 오류는 제보를 남겨두고 다음 주기에 재시도한다.
-            log.error("만료 제보의 S3 이미지 삭제 실패. 다음 주기에 재시도. reportId={}", report.getId());
-            return false;
         }
+        return allHandled;
     }
 }

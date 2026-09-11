@@ -123,6 +123,9 @@ public class ReportService {
                 .imageUrl(request.imageUrl())
                 .build();
 
+        // 마지막 제보 시각을 ReportLocation.lastReportedAt에 적용
+        report.getReportLocation().merged();
+
         return reportRepository.save(report);
     }
 

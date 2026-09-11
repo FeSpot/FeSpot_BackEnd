@@ -2,18 +2,12 @@ package com.api.fespot.domain.report.entity;
 
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.global.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Entity
@@ -39,16 +33,21 @@ public class ReportLocation extends BaseEntity {
     @Column(name = "anchor_longitude", nullable = false)
     private double anchorLongitude;
 
+    @Column(nullable = false)
+    private LocalDateTime lastReportedAt;
+
     private ReportLocation(
             Festival festival,
             String signatureName,
             double anchorLatitude,
-            double anchorLongitude
+            double anchorLongitude,
+            LocalDateTime lastReportedAt
     ) {
         this.festival = festival;
         this.signatureName = signatureName;
         this.anchorLatitude = anchorLatitude;
         this.anchorLongitude = anchorLongitude;
+        this.lastReportedAt = lastReportedAt;
     }
 
     public static ReportLocation create(
@@ -57,6 +56,10 @@ public class ReportLocation extends BaseEntity {
             double anchorLatitude,
             double anchorLongitude
     ) {
-        return new ReportLocation(festival, signatureName, anchorLatitude, anchorLongitude);
+        return new ReportLocation(festival, signatureName, anchorLatitude, anchorLongitude, LocalDateTime.now());
+    }
+
+    public void merged() {
+        this.lastReportedAt = LocalDateTime.now();
     }
 }
