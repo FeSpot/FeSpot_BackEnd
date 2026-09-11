@@ -27,10 +27,10 @@ import com.api.fespot.domain.report.web.dto.ReportCreateReq;
 import com.api.fespot.domain.report.web.dto.ReportFeedRes;
 import com.api.fespot.domain.report.web.dto.ReportSummaryRes;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
-import com.api.fespot.global.response.code.ErrorResponseCode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -172,7 +172,7 @@ class ReportServiceTest {
                 null))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
-                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+                                .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         verifyNoInteractions(
                 festivalJpaRepository,
@@ -291,7 +291,7 @@ class ReportServiceTest {
         assertThatThrownBy(() -> reportService.getMyReports(USER_ID, null, 10))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
-                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+                                .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         verifyNoInteractions(reportRepository);
     }
@@ -320,7 +320,7 @@ class ReportServiceTest {
         assertThatThrownBy(() -> reportService.deleteMyReport(USER_ID, 10L))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
-                                .isEqualTo(ErrorResponseCode.UNAUTHORIZED));
+                                .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
 
         verifyNoInteractions(reportRepository);
     }

@@ -2,16 +2,7 @@ package com.api.fespot.domain.notification.entity;
 
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,10 +11,16 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "push_tokens",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_push_tokens_expo_push_token",
-                columnNames = "expo_push_token"
-        )
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_push_tokens_expo_push_token",
+                        columnNames = "expo_push_token"
+                ),
+                @UniqueConstraint(
+                        name = "uk_push_tokens_user_id",
+                        columnNames = "user_id"
+                )
+        }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PushToken extends BaseEntity {
@@ -33,7 +30,7 @@ public class PushToken extends BaseEntity {
     @Column(name = "push_token_id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -53,7 +50,7 @@ public class PushToken extends BaseEntity {
         return new PushToken(user, token);
     }
 
-    public void registerTo(User user) {
-        this.user = user;
+    public void updateToken(String token){
+        this.token = token;
     }
 }

@@ -80,7 +80,11 @@ public class ExpoPushClient {
 
             return response.data();
         } catch (RestClientException exception) {
-            throw expoApiException();
+            throw new CustomException(
+                    PushErrorResponseCode.EXPO_PUSH_API_ERROR_502,
+                    exception
+            );
+
         }
     }
 
@@ -105,7 +109,10 @@ public class ExpoPushClient {
 
             return response.data();
         } catch (RestClientException exception) {
-            throw expoApiException();
+            throw new CustomException(
+                    PushErrorResponseCode.EXPO_PUSH_API_ERROR_502,
+                    exception
+            );
         }
     }
 
