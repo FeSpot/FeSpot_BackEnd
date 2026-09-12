@@ -40,6 +40,9 @@ public class Report extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String content;
 
+    @Column(name = "original_location", nullable = false, length = 100)
+    private String originalLocation;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "congestion_level", nullable = false)
     private CongestionLevel congestionLevel;
@@ -52,12 +55,14 @@ public class Report extends BaseEntity {
             User user,
             ReportLocation reportLocation,
             String content,
+            String originalLocation,
             CongestionLevel congestionLevel,
             String imageUrl
     ) {
         this.user = user;
         this.reportLocation = reportLocation;
         this.content = content;
+        this.originalLocation = originalLocation;
         this.congestionLevel = congestionLevel;
         this.imageUrl = imageUrl;
     }

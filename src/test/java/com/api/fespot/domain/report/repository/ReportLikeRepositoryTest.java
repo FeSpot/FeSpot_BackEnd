@@ -112,6 +112,7 @@ class ReportLikeRepositoryTest {
                 .user(user)
                 .reportLocation(location)
                 .content(content)
+                .originalLocation("메인 스테이지")
                 .congestionLevel(CongestionLevel.NORMAL)
                 .imageUrl(null)
                 .build());

@@ -30,7 +30,7 @@ public class ReportLocation extends BaseEntity {
     @JoinColumn(name = "festival_id", nullable = false)
     private Festival festival;
 
-    @Column(name = "signature_name", nullable = false)
+    @Column(name = "signature_name")
     private String signatureName;
 
     @Column(name = "anchor_latitude", nullable = false)

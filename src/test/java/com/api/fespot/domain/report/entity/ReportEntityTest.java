@@ -35,6 +35,7 @@ class ReportEntityTest {
         assertThat(report.getUser()).isSameAs(user);
         assertThat(report.getReportLocation()).isSameAs(location);
         assertThat(report.getContent()).isEqualTo("메인 무대 앞에 사람이 많아요.");
+        assertThat(report.getOriginalLocation()).isEqualTo("  메인 스테이지  ");
         assertThat(report.getCongestionLevel()).isEqualTo(CongestionLevel.CROWDED);
         assertThat(report.getImageUrl()).isNull();
     }
@@ -50,6 +51,7 @@ class ReportEntityTest {
                 .user(user)
                 .reportLocation(location)
                 .content(content)
+                .originalLocation("  메인 스테이지  ")
                 .congestionLevel(congestionLevel)
                 .imageUrl(imageUrl)
                 .build();
