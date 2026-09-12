@@ -3,6 +3,8 @@ package com.api.fespot.domain.festival.entity;
 import com.api.fespot.global.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,12 +43,27 @@ public class Festival extends BaseEntity {
     @Column(nullable = false)
     private int year;
 
-    private Festival(String contentId, int year) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "festival_key", length = 64)
+    private FestivalKey festivalKey;
+
+    private Festival(String contentId, int year, FestivalKey festivalKey) {
         this.contentId = contentId;
         this.year = year;
+        this.festivalKey = festivalKey;
     }
 
     public static Festival create(String contentId, int year) {
-        return new Festival(contentId, year);
+        return create(contentId, year, null);
+    }
+
+    public static Festival create(String contentId, int year, FestivalKey festivalKey) {
+        return new Festival(contentId, year, festivalKey);
+    }
+
+    public void assignFestivalKeyIfAbsent(FestivalKey festivalKey) {
+        if (this.festivalKey == null) {
+            this.festivalKey = festivalKey;
+        }
     }
 }
