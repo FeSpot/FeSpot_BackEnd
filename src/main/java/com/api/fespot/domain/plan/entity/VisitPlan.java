@@ -8,6 +8,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Entity
 @Getter
+@DynamicUpdate
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         uniqueConstraints = @UniqueConstraint(columnNames = {
@@ -28,6 +30,10 @@ public class VisitPlan extends BaseEntity {
 
     @Column(nullable = false, length = 10)
     private LocalDate planTargetDate;
+
+    // Expo 전달 성공일이 아니라, 중복 발송을 막기 위해 호출 전에 기록하는 시도일이다.
+    @Column(name = "morning_notification_attempted_date")
+    private LocalDate morningNotificationAttemptedDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

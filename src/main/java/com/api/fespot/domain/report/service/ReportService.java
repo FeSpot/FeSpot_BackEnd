@@ -16,10 +16,10 @@ import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
-import com.api.fespot.global.response.code.ErrorResponseCode;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -297,7 +297,7 @@ public class ReportService {
 
     private User getUserOrThrow(Long userId){
         return userRepository.findById(userId)
-                .orElseThrow(()-> new CustomException(ErrorResponseCode.UNAUTHORIZED));
+                .orElseThrow(()-> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
     }
 
     private void validateUpdateRequest(UpdateMyReportReq req) {
