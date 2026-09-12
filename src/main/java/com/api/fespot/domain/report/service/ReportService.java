@@ -1,8 +1,11 @@
 package com.api.fespot.domain.report.service;
 
 import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
+import com.api.fespot.domain.report.client.AiReportClient;
+import com.api.fespot.domain.report.client.dto.AiNormalizedLocationRes;
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
@@ -13,7 +16,6 @@ import com.api.fespot.domain.report.repository.ReportLocationRepository;
 import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.report.web.dto.*;
 import com.api.fespot.domain.user.entity.User;
-import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
@@ -24,10 +26,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportService {
@@ -41,39 +46,79 @@ public class ReportService {
     private final ReportLocationRepository reportLocationRepository;
     private final ReportRepository reportRepository;
     private final ReportLikeRepository reportLikeRepository;
+    private final AiReportClient aiReportClient;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public Report createReport(
             Long userId,
             String contentId,
             int year,
             ReportCreateReq request
     ) {
-        //토큰에서 얻은 사용자 ID로 사용자 조회
-        User user = getUserOrThrow(userId);
+        // 대표 이름 조회와 관계없이 그룹과 제보를 먼저 저장한다.
+        Report savedReport = transactionTemplate.execute(status -> {
+            User user = getUserOrThrow(userId);
+            Festival festival = getFestivalOrThrow(contentId, year);
+            ReportLocation reportLocation = findNearestLocation(festival, request)
+                    .orElseGet(() -> reportLocationRepository.save(
+                            ReportLocation.create(
+                                    festival,
+                                    null,
+                                    request.latitude(),
+                                    request.longitude())));
 
-        //제보 대상 축제 조회
-        Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
-                .orElseThrow(() -> new CustomException(FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+            return saveReport(user, reportLocation, request);
+        });
 
-        //새 마커 25m 안에 기존 대표 마커가 있는지 확인한다.
-        /*
-            존재한다면 -> 기존 ReportLocation 사용
-            존재하지않으면 -> 요청 좌표로 새로운 ReportLocation 생성
-         */
-        ReportLocation reportLocation = findNearestLocation(festival, request)
-                //기존 위치가 없을 때만 orElseGet() 내부 코드 실행
-                .orElseGet(() -> reportLocationRepository.save(
-                        ReportLocation.create(
-                                festival,
-                                request.signatureName(), //이건 추가 해야함 잠시 대기
-                                request.latitude(),
-                                request.longitude())));
+        ReportLocation reportLocation = savedReport.getReportLocation();
+        if (reportLocation.getSignatureName() != null) {
+            return savedReport;
+        }
 
+        // 외부 API는 커밋 이후 호출하며, 이름 보완 실패가 제보 등록을 실패시키지 않는다.
+        try {
+            resolveSignatureName(reportLocation.getFestival().getFestivalKey(), request.originalLocation())
+                    .ifPresent(signatureName -> transactionTemplate.executeWithoutResult(status ->
+                            reportLocationRepository.updateSignatureNameIfAbsent(
+                                    reportLocation.getId(), signatureName)));
+        } catch (RuntimeException exception) {
+            // AI 통신 오류는 Client에서 원인과 함께 기록한다.
+            if (!(exception instanceof CustomException customException
+                    && customException.getBaseResponseCode() == ReportErrorResponseCode.REPORT_LOCATION_API_ERROR_502)) {
+                log.error("제보 저장 후 대표 장소명 보완 실패: reportId={}, reportLocationId={}",
+                        savedReport.getId(), reportLocation.getId(), exception);
+            }
+        }
+        return savedReport;
+    }
+
+    private Festival getFestivalOrThrow(String contentId, int year) {
+        return festivalJpaRepository.findByContentIdAndYear(contentId, year)
+                .orElseThrow(() -> new CustomException(
+                        FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
+    }
+
+    private Optional<String> resolveSignatureName(FestivalKey festivalKey, String originalLocation) {
+        if (festivalKey == null) {
+            return Optional.empty();
+        }
+
+        AiNormalizedLocationRes response = aiReportClient.getNormalizedLocation(
+                originalLocation,
+                festivalKey.getAiFestivalId());
+        if (!response.location_matched()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(response.normalized_location())
+                .filter(name -> !name.isBlank());
+    }
+
+    private Report saveReport(User user, ReportLocation reportLocation, ReportCreateReq request) {
         Report report = Report.builder()
                 .user(user)
                 .reportLocation(reportLocation)
                 .content(request.content())
+                .originalLocation(request.originalLocation())
                 .congestionLevel(request.congestionLevel())
                 .imageUrl(request.imageUrl())
                 .build();
@@ -238,7 +283,8 @@ public class ReportService {
                             .orElseThrow();
 
 
-                    return ReportSummaryRes.of(reportLocationId, reportCount, representativeLevel, latestReportedAt);
+                    String signatureName = reports.getFirst().getReportLocation().getSignatureName();
+                    return ReportSummaryRes.of(reportLocationId, signatureName, reportCount, representativeLevel, latestReportedAt);
                 })
 
                 //groupingBy로 묶으면 기본적으로 hashMap이 만들어지는데 이는 순서를 보장해주지 않는.
