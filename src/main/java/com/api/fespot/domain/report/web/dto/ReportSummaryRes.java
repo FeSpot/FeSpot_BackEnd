@@ -6,11 +6,12 @@ import java.time.LocalDateTime;
 
 public record ReportSummaryRes(
         Long reportLocationId,
+        String signatureName,
         int reportCount,
         CongestionLevel representativeLevel,
         LocalDateTime latestReportedAt
 ) {
-    public static ReportSummaryRes of(Long reportLocationId, int reportCount, CongestionLevel representativeLevel, LocalDateTime latestReportedAt) {
-        return new ReportSummaryRes(reportLocationId, reportCount, representativeLevel, latestReportedAt);
+    public static ReportSummaryRes of(Long reportLocationId, String signatureName, int reportCount, CongestionLevel representativeLevel, LocalDateTime latestReportedAt) {
+        return new ReportSummaryRes(reportLocationId, signatureName, reportCount, representativeLevel, latestReportedAt);
     }
 }

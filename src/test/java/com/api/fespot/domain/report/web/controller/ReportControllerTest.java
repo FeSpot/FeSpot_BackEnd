@@ -35,6 +35,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -98,7 +99,7 @@ class ReportControllerTest {
                                   "content": "메인 무대 앞이 매우 혼잡해요.",
                                   "congestionLevel": "CROWDED",
                                   "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
-                                  "signatureName": "메인 무대"
+                                  "originalLocation": "메인 무대"
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -138,9 +139,25 @@ class ReportControllerTest {
                                   "content": " ",
                                   "congestionLevel": "CROWDED",
                                   "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
-                                  "signatureName": "메인 무대"
+                                  "originalLocation": "메인 무대"
                                 }
                                 """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_BODY"));
+
+        verifyNoInteractions(reportService);
+    }
+
+    @Test
+    void rejectsReportWithBlankOriginalLocation() throws Exception {
+        authenticate();
+
+        mockMvc.perform(post("/reports")
+                        .param("contentId", "100")
+                        .param("year", "2026")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestBody().replace("\"메인 무대\"", "\" \"")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("GLOBAL_400_BODY"));
 
@@ -353,6 +370,7 @@ class ReportControllerTest {
                         .value("CROWDED"))
                 .andExpect(jsonPath("$.data.items[0].likeCount").value(3))
                 .andExpect(jsonPath("$.data.items[0].likedByMe").value(false))
+                .andExpect(jsonPath("$.data.items[0].originalLocation").value("메인 스테이지"))
                 .andExpect(jsonPath("$.data.items[0].description")
                         .value("메인 무대 앞이 매우 혼잡해요."))
                 .andExpect(jsonPath("$.data.items[0].createdAt")
@@ -372,6 +390,7 @@ class ReportControllerTest {
                 null,
                 CongestionLevel.NORMAL,
                 "입구 줄이 길어요.",
+                "정문 앞",
                 4L,
                 true,
                 LocalDateTime.of(2026, 8, 22, 12, 0),
@@ -394,6 +413,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.items[0].imageUrl").doesNotExist())
                 .andExpect(jsonPath("$.data.items[0].likeCount").value(4))
                 .andExpect(jsonPath("$.data.items[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.data.items[0].originalLocation").value("정문 앞"))
                 .andExpect(jsonPath("$.data.items[0].expired").value(true))
                 .andExpect(jsonPath("$.data.pageInfo.nextCursor").value(95))
                 .andExpect(jsonPath("$.data.pageInfo.hasNext").value(true));
@@ -495,10 +515,13 @@ class ReportControllerTest {
         verifyNoInteractions(reportService);
     }
 
-    @Test
-    void allowsGuestToReadReportSummary() throws Exception {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "메인무대")
+    void allowsGuestToReadReportSummary(String signatureName) throws Exception {
         ReportSummaryRes item = new ReportSummaryRes(
                 11L,
+                signatureName,
                 4,
                 CongestionLevel.CROWDED,
                 LocalDateTime.of(2026, 8, 22, 12, 30));
@@ -513,6 +536,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.code").value("SUCCESS_200"))
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].reportLocationId").value(11))
+                .andExpect(jsonPath("$.data[0].signatureName").value(signatureName))
                 .andExpect(jsonPath("$.data[0].reportCount").value(4))
                 .andExpect(jsonPath("$.data[0].representativeLevel")
                         .value("CROWDED"))
@@ -570,6 +594,7 @@ class ReportControllerTest {
                 imageUrl,
                 congestionLevel,
                 description,
+                "메인 스테이지",
                 3L,
                 false,
                 createdAt,
@@ -584,7 +609,7 @@ class ReportControllerTest {
                   "content": "메인 무대 앞이 매우 혼잡해요.",
                   "congestionLevel": "CROWDED",
                   "imageUrl": "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg",
-                  "signatureName": "메인 무대"
+                  "originalLocation": "메인 무대"
                 }
                 """;
     }

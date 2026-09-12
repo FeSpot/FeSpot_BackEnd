@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class ReportCreateReqTest {
 
@@ -83,6 +84,32 @@ class ReportCreateReqTest {
     @DisplayName("혼잡도가 없으면 검증에 실패한다")
     void rejectsMissingCongestionLevel() {
         assertThat(validator.validate(request(35.1532, 129.1187, "혼잡한 상황입니다.", null))).isNotEmpty();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t\n"})
+    void rejectsMissingOrBlankOriginalLocation(String originalLocation) {
+        ReportCreateReq request = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, originalLocation);
+
+        assertThat(validator.validate(request))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("originalLocation"));
+    }
+
+    @Test
+    void acceptsOneHundredCharactersAndRejectsLongerOriginalLocation() {
+        ReportCreateReq accepted = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, "가".repeat(100));
+        ReportCreateReq rejected = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, "가".repeat(101));
+
+        assertThat(validator.validate(accepted)).isEmpty();
+        assertThat(validator.validate(rejected))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("originalLocation"));
     }
 
     private ReportCreateReq request(

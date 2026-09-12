@@ -29,6 +29,8 @@ public record ReportCreateReq(
         @URL(protocol = "https" , message = "이미지 url은 올바른 HTTPS URL 이어야 합니다.")
         String imageUrl,
 
-        String signatureName
+        @NotBlank(message = "원문 장소명은 필수입니다.")
+        @Size(max = 100, message = "원문 장소명은 100자 이하여야 합니다.")
+        String originalLocation
 ) {
 }
