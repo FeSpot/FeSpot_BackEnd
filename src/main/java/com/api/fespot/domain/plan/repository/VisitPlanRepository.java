@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,6 +53,75 @@ order by plan.id desc
     );
 
     long countByUser_Id(Long userId);
+
+    @Query("""
+select plan.id
+from VisitPlan plan
+where plan.planTargetDate = :today
+    and (:cursor is null or plan.id < :cursor)
+    and (plan.morningNotificationAttemptedDate is null
+        or plan.morningNotificationAttemptedDate <> :today)
+    and exists (
+        select notification.id
+        from FestivalNotification notification
+        where notification.user = plan.user
+            and notification.festival = plan.festival
+    )
+    and exists (
+        select pushToken.id
+        from PushToken pushToken
+        where pushToken.user = plan.user
+    )
+order by plan.id desc
+""")
+    List<Long> findMorningNotificationTargets(
+            @Param("today") LocalDate today,
+            @Param("cursor") Long cursor,
+            Limit limit
+    );
+
+    @Query("""
+select pushToken.token
+from VisitPlan plan, FestivalNotification notification, PushToken pushToken
+where plan.id = :planId
+    and plan.planTargetDate = :today
+    and (plan.morningNotificationAttemptedDate is null
+        or plan.morningNotificationAttemptedDate <> :today)
+    and notification.user = plan.user
+    and notification.festival = plan.festival
+    and pushToken.user = plan.user
+""")
+    Optional<String> findMorningNotificationPushToken(
+            @Param("planId") Long planId,
+            @Param("today") LocalDate today
+    );
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+update VisitPlan plan
+set plan.morningNotificationAttemptedDate = :today
+where plan.id = :planId
+    and plan.planTargetDate = :today
+    and (plan.morningNotificationAttemptedDate is null
+        or plan.morningNotificationAttemptedDate <> :today)
+    and exists (
+        select notification.id
+        from FestivalNotification notification
+        where notification.user = plan.user
+            and notification.festival = plan.festival
+    )
+    and exists (
+        select pushToken.id
+        from PushToken pushToken
+        where pushToken.user = plan.user
+            and pushToken.token = :pushToken
+    )
+""")
+    int markMorningNotificationAttemptedIfEligible(
+            @Param("planId") Long planId,
+            @Param("today") LocalDate today,
+            @Param("pushToken") String pushToken
+    );
 
     // 회원 탈퇴 시 사용자의 모든 계획을 일괄 삭제한다.
     @Modifying

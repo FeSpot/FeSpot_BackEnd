@@ -8,6 +8,9 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class ReportCreateReqTest {
 
@@ -19,11 +22,38 @@ class ReportCreateReqTest {
     }
 
     @Test
-    @DisplayName("유효한 제보 등록 요청은 검증을 통과한다")
-    void acceptsValidRequest() {
+    @DisplayName("이미지 URL이 없는 유효한 제보 등록 요청은 검증을 통과한다")
+    void acceptsValidRequestWithoutImageUrl() {
         ReportCreateReq request = request(35.1532, 129.1187, "메인 무대 앞에 사람이 많아요.", CongestionLevel.CROWDED);
 
         assertThat(validator.validate(request)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("올바른 HTTPS 이미지 URL은 검증을 통과한다")
+    void acceptsValidHttpsImageUrl() {
+        ReportCreateReq request = request(
+                35.1532,
+                129.1187,
+                "메인 무대 앞에 사람이 많아요.",
+                CongestionLevel.CROWDED,
+                "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/reports/report.jpg");
+
+        assertThat(validator.validate(request)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://example.com/report.jpg", "invalid-url"})
+    @DisplayName("HTTP 또는 잘못된 이미지 URL은 검증에 실패한다")
+    void rejectsInvalidImageUrl(String imageUrl) {
+        ReportCreateReq request = request(
+                35.1532,
+                129.1187,
+                "메인 무대 앞에 사람이 많아요.",
+                CongestionLevel.CROWDED,
+                imageUrl);
+
+        assertThat(validator.validate(request)).isNotEmpty();
     }
 
     @Test
@@ -56,12 +86,54 @@ class ReportCreateReqTest {
         assertThat(validator.validate(request(35.1532, 129.1187, "혼잡한 상황입니다.", null))).isNotEmpty();
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t\n"})
+    void rejectsMissingOrBlankOriginalLocation(String originalLocation) {
+        ReportCreateReq request = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, originalLocation);
+
+        assertThat(validator.validate(request))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("originalLocation"));
+    }
+
+    @Test
+    void acceptsOneHundredCharactersAndRejectsLongerOriginalLocation() {
+        ReportCreateReq accepted = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, "가".repeat(100));
+        ReportCreateReq rejected = new ReportCreateReq(
+                35.1532, 129.1187, "혼잡한 상황입니다.", CongestionLevel.CROWDED,
+                null, "가".repeat(101));
+
+        assertThat(validator.validate(accepted)).isEmpty();
+        assertThat(validator.validate(rejected))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("originalLocation"));
+    }
+
     private ReportCreateReq request(
             Double latitude,
             Double longitude,
             String content,
             CongestionLevel congestionLevel
     ) {
-        return new ReportCreateReq(latitude, longitude, content, congestionLevel);
+        return request(latitude, longitude, content, congestionLevel, null);
+    }
+
+    private ReportCreateReq request(
+            Double latitude,
+            Double longitude,
+            String content,
+            CongestionLevel congestionLevel,
+            String imageUrl
+    ) {
+        return new ReportCreateReq(
+                latitude,
+                longitude,
+                content,
+                congestionLevel,
+                imageUrl,
+                "메인 무대");
     }
 }

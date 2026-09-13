@@ -1,6 +1,8 @@
 package com.api.fespot.domain.plan.service;
 
+import com.api.fespot.domain.festival.client.kto.KtoFestivalClient;
 import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.plan.entity.VisitPlace;
@@ -15,14 +17,17 @@ import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +36,7 @@ public class PlanService {
 
     private final FestivalJpaRepository festivalJpaRepository;
     private final UserRepository userRepository;
+    private final KtoFestivalClient ktoFestivalClient;
 
     private final VisitPlanRepository visitPlanRepository;
     private final VisitPlaceRepository visitPlaceRepository;
@@ -43,6 +49,7 @@ public class PlanService {
 
         VisitPlan visitPlan = VisitPlan.builder()
                 .planTargetDate(request.targetDate())
+                .title(request.planName())
                 .user(userRepository.findById(userId)
                         .orElseThrow(() -> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404))
                 )
@@ -75,9 +82,20 @@ public class PlanService {
         List<VisitPlan> plans = visitPlanRepository.findAllWithVisitPlaceByIdIn(pageIds);
         Long nextCursor = hasNext ? pageIds.get(pageIds.size() - 1) : null;
 
+        // 방문 계획에 축제 제목을 바인딩
+        List<FestivalSummaryReadModel> festivalOfCurrentYear = ktoFestivalClient.findByYear(LocalDate.now().getYear());
+
+        Map<String, String> nameByContentId = festivalOfCurrentYear.stream()
+                .collect(Collectors.toMap(
+                        FestivalSummaryReadModel::contentId,
+                        FestivalSummaryReadModel::name,
+                        (first, second) -> first
+                ));
+
         return new PlanListResult(
                 totalCount,
                 plans,
+                nameByContentId,
                 nextCursor,
                 hasNext
         );
@@ -132,7 +150,9 @@ public class PlanService {
             VisitPlace visitPlace = foundPlaces.get(updated.placeId());
             visitPlace.modify(
                     updated.startAt() == null ? visitPlace.getStartAt() : updated.startAt(),
-                    updated.name() == null ? visitPlace.getPlaceName() : updated.name());
+                    updated.name() == null ? visitPlace.getPlaceName() : updated.name(),
+                    updated.roadAddress() == null ? visitPlace.getRoadAddress() : updated.roadAddress()
+            );
         }
         // 식별자가 없는 것들을 저장
         places = request.plans().stream()

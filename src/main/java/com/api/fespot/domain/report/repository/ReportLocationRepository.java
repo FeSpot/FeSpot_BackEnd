@@ -5,6 +5,7 @@ import com.api.fespot.domain.report.entity.ReportLocation;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,4 +21,18 @@ public interface ReportLocationRepository extends JpaRepository<ReportLocation, 
             @Param("festival") Festival festival,
             @Param("activeSince") LocalDateTime activeSince
     );
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            update ReportLocation location
+            set location.signatureName = :signatureName
+            where location.id = :id
+              and location.signatureName is null
+            """)
+    int updateSignatureNameIfAbsent(
+            @Param("id") Long id,
+            @Param("signatureName") String signatureName
+    );
+
+    List<ReportLocation> findAllByLastReportedAtBefore(LocalDateTime threshold);
 }

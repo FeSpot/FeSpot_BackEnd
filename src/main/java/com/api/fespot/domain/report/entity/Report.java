@@ -13,13 +13,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Getter
 @Entity
+@DynamicUpdate
 @Table(name = "reports")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Report extends BaseEntity {
@@ -40,6 +43,9 @@ public class Report extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String content;
 
+    @Column(name = "original_location", nullable = false, length = 100)
+    private String originalLocation;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "congestion_level", nullable = false)
     private CongestionLevel congestionLevel;
@@ -47,17 +53,22 @@ public class Report extends BaseEntity {
     @Column(name = "image_url")
     private String imageUrl;
 
+    @Column(name = "popular_notification_attempted_at")
+    private LocalDateTime popularNotificationAttemptedAt;
+
     @Builder
     private Report(
             User user,
             ReportLocation reportLocation,
             String content,
+            String originalLocation,
             CongestionLevel congestionLevel,
             String imageUrl
     ) {
         this.user = user;
         this.reportLocation = reportLocation;
         this.content = content;
+        this.originalLocation = originalLocation;
         this.congestionLevel = congestionLevel;
         this.imageUrl = imageUrl;
     }

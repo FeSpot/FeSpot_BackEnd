@@ -1,5 +1,6 @@
 package com.api.fespot.domain.plan;
 
+import com.api.fespot.domain.festival.client.kto.KtoFestivalClient;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
@@ -23,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -33,6 +35,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -49,17 +53,21 @@ public class PlanServiceTest {
     @Autowired private VisitPlaceRepository visitPlaceRepository;
     @Autowired private TestEntityManager entityManager;
 
+    @MockitoBean private KtoFestivalClient ktoFestivalClient;
+
     private Festival festival;
     private User user;
 
     private PlanRequest planRequest = new PlanRequest(
             "1",
+            "테스트 계획",
             LocalDate.now().plusDays(2),
             LocalDate.now().plusDays(1),
             List.of(
                     new PlanRequest.Plan(1L,
                             LocalTime.of(0, 0),
-                            "name")
+                            "name",
+                            "road")
             )
     );
 
@@ -67,6 +75,7 @@ public class PlanServiceTest {
     void setUp() {
         festival = entityManager.persist(Festival.create("1", LocalDate.now().plusDays(2).getYear()));
         user = entityManager.persist(User.create("plan-test@fespot.com", "passwordHash"));
+        given(ktoFestivalClient.findByYear(anyInt())).willReturn(List.of());
     }
 
     @Test
@@ -77,6 +86,7 @@ public class PlanServiceTest {
 
         // then
         assertThat(visitPlan.getId()).isNotNull();
+        assertThat(visitPlan.getTitle()).isEqualTo(planRequest.planName());
         assertThat(visitPlan.getPlanTargetDate()).isEqualTo(planRequest.targetDate());
         assertThat(visitPlan.getUser()).isEqualTo(user);
         assertThat(visitPlan.getFestival()).isEqualTo(festival);
@@ -94,6 +104,7 @@ public class PlanServiceTest {
         VisitPlan found = visitPlanRepository.findById(visitPlan.getId()).orElseThrow();
         assertThat(found.getPlaces()).hasSize(1);
         assertThat(found.getPlaces().get(0).getPlaceName()).isEqualTo("name");
+        assertThat(found.getPlaces().get(0).getRoadAddress()).isEqualTo("road");
         assertThat(found.getPlaces().get(0).getStartAt()).isEqualTo(LocalTime.of(0, 0));
     }
 
@@ -105,9 +116,10 @@ public class PlanServiceTest {
 
         PlanRequest secondRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate().plusDays(1),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", "road"))
         );
         planService.createVisitPlan(user.getId(), secondRequest);
         entityManager.flush();
@@ -134,15 +146,17 @@ public class PlanServiceTest {
         VisitPlan first = planService.createVisitPlan(user.getId(), planRequest);
         VisitPlan second = planService.createVisitPlan(user.getId(), new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate().plusDays(1),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace"))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(15, 0), "secondPlace", "road"))
         ));
         VisitPlan third = planService.createVisitPlan(user.getId(), new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate().plusDays(2),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace"))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(17, 0), "thirdPlace", "road"))
         ));
         entityManager.flush();
         entityManager.clear();
@@ -178,9 +192,10 @@ public class PlanServiceTest {
         User otherUser = entityManager.persist(User.create("other-user-list@fespot.com", "passwordHash"));
         PlanRequest otherRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(null, LocalTime.of(16, 0), "otherPlace"))
+                List.of(new PlanRequest.Plan(null, LocalTime.of(16, 0), "otherPlace", "road"))
         );
         planService.createVisitPlan(otherUser.getId(), otherRequest);
         entityManager.flush();
@@ -260,6 +275,7 @@ public class PlanServiceTest {
         LocalDate newTargetDate = LocalDate.now().plusDays(3);
         PlanRequest updateRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 newTargetDate,
                 null
@@ -288,9 +304,10 @@ public class PlanServiceTest {
 
         PlanRequest updateRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
-                List.of(new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName"))
+                List.of(new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", "updatedRoad"))
         );
 
         // when
@@ -305,6 +322,7 @@ public class PlanServiceTest {
         VisitPlace place = found.getPlaces().get(0);
         assertThat(place.getId()).isEqualTo(placeId);
         assertThat(place.getPlaceName()).isEqualTo("updatedName");
+        assertThat(place.getRoadAddress()).isEqualTo("updatedRoad");
         assertThat(place.getStartAt()).isEqualTo(LocalTime.of(11, 30));
     }
 
@@ -319,11 +337,12 @@ public class PlanServiceTest {
 
         PlanRequest updateRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName"),
-                        new PlanRequest.Plan(null, LocalTime.of(13, 0), "newPlace")
+                        new PlanRequest.Plan(placeId, LocalTime.of(11, 30), "updatedName", "updatedRoad"),
+                        new PlanRequest.Plan(null, LocalTime.of(13, 0), "newPlace", "newRoad")
                 )
         );
 
@@ -351,11 +370,12 @@ public class PlanServiceTest {
         // given
         PlanRequest createRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(null, LocalTime.of(10, 0), "placeA"),
-                        new PlanRequest.Plan(null, LocalTime.of(12, 0), "placeB")
+                        new PlanRequest.Plan(null, LocalTime.of(10, 0), "placeA", "roadA"),
+                        new PlanRequest.Plan(null, LocalTime.of(12, 0), "placeB", "roadB")
                 )
         );
         VisitPlan created = planService.createVisitPlan(user.getId(), createRequest);
@@ -366,11 +386,12 @@ public class PlanServiceTest {
 
         PlanRequest updateRequest = new PlanRequest(
                 "1",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 List.of(
-                        new PlanRequest.Plan(placeAId, LocalTime.of(10, 30), "placeA2"),
-                        new PlanRequest.Plan(placeBId, LocalTime.of(12, 30), "placeB2")
+                        new PlanRequest.Plan(placeAId, LocalTime.of(10, 30), "placeA2", "roadA2"),
+                        new PlanRequest.Plan(placeBId, LocalTime.of(12, 30), "placeB2", "roadB2")
                 )
         );
 
@@ -434,6 +455,7 @@ public class PlanServiceTest {
         // given
         PlanRequest notExistFestivalRequest = new PlanRequest(
                 "not-exist",
+                "테스트 계획",
                 planRequest.startDate(),
                 planRequest.targetDate(),
                 planRequest.plans()

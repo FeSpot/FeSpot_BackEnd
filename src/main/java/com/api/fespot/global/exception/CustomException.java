@@ -7,4 +7,8 @@ public class CustomException extends BaseException {
     public CustomException(BaseResponseCode baseResponseCode) {
         super(baseResponseCode);
     }
+
+    public CustomException(BaseResponseCode baseResponseCode, Throwable cause) {
+        super(baseResponseCode, cause);
+    }
 }
