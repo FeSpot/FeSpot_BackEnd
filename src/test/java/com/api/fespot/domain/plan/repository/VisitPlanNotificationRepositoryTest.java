@@ -125,6 +125,7 @@ class VisitPlanNotificationRepositoryTest {
                 .user(user)
                 .festival(festival)
                 .planTargetDate(targetDate)
+                .title("알림 테스트 계획")
                 .build());
     }
 
