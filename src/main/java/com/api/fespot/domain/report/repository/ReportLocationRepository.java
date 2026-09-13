@@ -33,4 +33,6 @@ public interface ReportLocationRepository extends JpaRepository<ReportLocation, 
             @Param("id") Long id,
             @Param("signatureName") String signatureName
     );
+
+    List<ReportLocation> findAllByLastReportedAtBefore(LocalDateTime threshold);
 }

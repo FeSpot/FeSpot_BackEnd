@@ -121,4 +121,22 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("now") LocalDateTime now,
             @Param("minimumLikeCount") long minimumLikeCount
     );
+
+    List<Report> findAllByCreatedAtBefore(LocalDateTime threshold);
+
+    @Modifying
+    @Query("""
+delete from Report r
+where r.reportLocation.id in :reportLocationIds
+""")
+    void deleteAllByReportLocationIdIn(
+            @Param("reportLocationIds") List<Long> reportLocationIds);
+
+    @Query("""
+select r.imageUrl from Report r
+where r.reportLocation.id = :reportLocationId and r.imageUrl is not null
+""")
+    List<String> findImageUrlsByReportLocationId
+            (@Param("reportLocationId") Long reportLocationId
+            );
 }

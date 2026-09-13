@@ -39,4 +39,11 @@ public interface ReportLikeRepository extends JpaRepository<ReportLike,Long> {
             delete from ReportLike reportLike
             where reportLike.report.id = :reportId""")
     void deleteAllByReportId(@Param("reportId")Long reportId);
+
+    @Modifying
+    @Query("""
+delete from ReportLike reportLike
+where reportLike.report.reportLocation.id in :reportLocationIds
+""")
+    void deleteAllByReportLocationIdIn(@Param("reportLocationIds") List<Long> reportLocationIds);
 }

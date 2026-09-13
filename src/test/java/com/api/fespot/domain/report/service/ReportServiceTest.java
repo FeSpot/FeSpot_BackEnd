@@ -143,6 +143,9 @@ class ReportServiceTest {
                 .willReturn(List.of(farther, nearest));
         given(reportRepository.save(any(Report.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
+        //병합 시 마커 수명이 연장되는지 확인하기 위해 마지막 제보 시각을 과거로 되돌린다.
+        LocalDateTime staleLastReportedAt = LocalDateTime.now().minusMinutes(20);
+        ReflectionTestUtils.setField(nearest, "lastReportedAt", staleLastReportedAt);
 
         Report report = reportService.createReport(
                 USER_ID,

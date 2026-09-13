@@ -199,10 +199,82 @@ class ReportRepositoryTest {
                 .containsExactly(newestActive.getId(), olderActive.getId());
     }
 
+    // 해당 대표 위치의 제보 중 이미지가 있는 제보의 URL만 조회한다.
+    @Test
+    void findsOnlyNonNullImageUrlsOfReportLocation() {
+        Festival festival = entityManager.persist(Festival.create("500", 2026));
+        User user = entityManager.persist(User.create(
+                "cleanup-report@example.com",
+                "사용자"));
+        ReportLocation location = entityManager.persist(ReportLocation.create(
+                festival,
+                "메인 무대",
+                35.1532,
+                129.1187));
+        ReportLocation otherLocation = entityManager.persist(ReportLocation.create(
+                festival,
+                "다른 무대",
+                35.1600,
+                129.1200));
+
+        persistReport(user, location, "이미지 있는 제보", "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/report/a.jpg");
+        persistReport(user, location, "이미지 없는 제보", null);
+        persistReport(user, otherLocation, "다른 위치 제보", "https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/report/b.jpg");
+        entityManager.flush();
+        entityManager.clear();
+
+        List<String> imageUrls =
+                reportRepository.findImageUrlsByReportLocationId(location.getId());
+
+        assertThat(imageUrls)
+                .containsExactly("https://fespot-bucket.s3.ap-northeast-2.amazonaws.com/report/a.jpg");
+    }
+
+    // 대표 위치에 딸린 제보들만 일괄 삭제한다.
+    @Test
+    void deletesAllReportsOfGivenReportLocations() {
+        Festival festival = entityManager.persist(Festival.create("600", 2026));
+        User user = entityManager.persist(User.create(
+                "bulk-delete@example.com",
+                "사용자"));
+        ReportLocation expiredLocation = entityManager.persist(ReportLocation.create(
+                festival,
+                "만료 무대",
+                35.1532,
+                129.1187));
+        ReportLocation activeLocation = entityManager.persist(ReportLocation.create(
+                festival,
+                "활성 무대",
+                35.1600,
+                129.1200));
+
+        persistReport(user, expiredLocation, "만료 제보1");
+        persistReport(user, expiredLocation, "만료 제보2");
+        Report remaining = persistReport(user, activeLocation, "활성 제보");
+        entityManager.flush();
+        entityManager.clear();
+
+        reportRepository.deleteAllByReportLocationIdIn(List.of(expiredLocation.getId()));
+        entityManager.clear();
+
+        assertThat(reportRepository.findAll())
+                .extracting(Report::getId)
+                .containsExactly(remaining.getId());
+    }
+
     private Report persistReport(
             User user,
             ReportLocation location,
             String content
+    ) {
+        return persistReport(user, location, content, null);
+    }
+
+    private Report persistReport(
+            User user,
+            ReportLocation location,
+            String content,
+            String imageUrl
     ) {
         return entityManager.persist(Report.builder()
                 .user(user)
@@ -210,7 +282,7 @@ class ReportRepositoryTest {
                 .content(content)
                 .originalLocation("메인 스테이지")
                 .congestionLevel(CongestionLevel.NORMAL)
-                .imageUrl(null)
+                .imageUrl(imageUrl)
                 .build());
     }
 
