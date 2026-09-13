@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 public record PlanListResponse(
         Integer totalCount,
@@ -20,30 +22,43 @@ public record PlanListResponse(
             Long planId,
 
             String festivalName,
+
+            String planName,
+
             @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "E MM.dd", locale = "ko")
             LocalDate targetDate,
             List<PlaceBlock> places
     ) {
-        public static List<PlanBlock> convertToPlanBlocks(List<VisitPlan> visitPlans) {
+        public static List<PlanBlock> convertToPlanBlocks(List<VisitPlan> visitPlans, Map<String, String> festivalNameByContentId) {
 
-            List<PlanBlock> blocks = new ArrayList<>();
+            return visitPlans.stream()
+                    .map(plan -> new PlanBlock(
+                            plan.getFestival().getContentId(),
+                            plan.getId(),
+                            festivalNameByContentId.get(plan.getFestival().getContentId()),
+                            plan.getTitle(),
+                            plan.getPlanTargetDate(),
+                            summarizePlaces(plan.getPlaces())
+                    )).toList();
+        }
 
-            for (VisitPlan visitPlan : visitPlans) {
-                blocks.add(
-                        new PlanBlock(
-                                visitPlan.getFestival().getContentId(),
-                                visitPlan.getId(),
-                                // FIXME: 축제 이름
-                                "",
-                                visitPlan.getPlanTargetDate(),
-                                visitPlan.getPlaces().stream()
-                                        .sorted(Comparator.comparing(VisitPlace::getStartAt))
-                                        .limit(4)
-                                        .map(PlaceBlock::convertToPlaceBlock)
-                                        .toList()
-                ));
+        /**
+         * @return 방문 계획 내의 경유지가 3개를 초과할 시, 첫 2개와 마지막 1개를 반환
+         */
+        private static List<PlaceBlock> summarizePlaces(List<VisitPlace> places) {
+            List<VisitPlace> sortedPlaces = places.stream()
+                    .sorted(Comparator.comparing(VisitPlace::getStartAt))
+                    .toList();
+
+            if (sortedPlaces.size() <= 3) {
+                return sortedPlaces.stream()
+                        .map(PlaceBlock::convertToPlaceBlock)
+                        .toList();
             }
-            return blocks;
+
+            return Stream.of(sortedPlaces.get(0), sortedPlaces.get(1), sortedPlaces.get(sortedPlaces.size() - 1))
+                    .map(PlaceBlock::convertToPlaceBlock)
+                    .toList();
         }
     }
 }

@@ -40,7 +40,8 @@ public class PlanController {
             @RequestParam(name = "size", defaultValue = "10") @Min(1) @Max(15) Integer size
     ) {
         PlanListResult result = planService.findAllVisitPlans(authPrincipal.getId(), cursor, size);
-        List<PlanListResponse.PlanBlock> planBlocks = PlanListResponse.PlanBlock.convertToPlanBlocks(result.plans());
+
+        List<PlanListResponse.PlanBlock> planBlocks = PlanListResponse.PlanBlock.convertToPlanBlocks(result.plans(), result.festivalNameByContentId());
 
         PlanListResponse response = new PlanListResponse(
                 result.totalCount(),
@@ -82,7 +83,7 @@ public class PlanController {
                 ));
     }
 
-    @PatchMapping("/{planId}")
+    @PutMapping("/{planId}")
     public ResponseEntity<SuccessResponse<PlanDetailResponse>> updatePlan(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable @NotNull(message = "방문 계획 기본 키는 비어 있을 수 없습니다.") Long planId,
