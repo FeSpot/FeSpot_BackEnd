@@ -46,8 +46,7 @@ public class ReportController {
                 authPrincipal.getId(),
                 contentId,
                 year,
-                request,
-                null);
+                request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

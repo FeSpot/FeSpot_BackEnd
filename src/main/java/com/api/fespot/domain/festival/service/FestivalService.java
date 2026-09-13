@@ -20,6 +20,7 @@ import com.api.fespot.global.exception.CustomException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -112,16 +113,22 @@ public class FestivalService {
             List<FestivalHomeRes> responses,
             int year
     ) {
-        List<Festival> festivals = responses.stream()
-                .filter(response ->
-                        response.availability() == FestivalAvailability.AVAILABLE)
-                .map(response -> response.festival().contentId())
-                .filter(contentId ->
-                        !festivalJpaRepository.existsByContentIdAndYear(
-                                contentId,
-                                year))
-                .map(contentId -> Festival.create(contentId, year))
-                .toList();
+        List<Festival> festivals = new ArrayList<>();
+        for (FestivalHomeRes response : responses) {
+            if (response.availability() != FestivalAvailability.AVAILABLE) {
+                continue;
+            }
+
+            String contentId = response.festival().contentId();
+            Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
+                    .orElse(null);
+            if (festival == null) {
+                festivals.add(Festival.create(contentId, year, response.festivalKey()));
+            } else if (festival.getFestivalKey() == null) {
+                festival.assignFestivalKeyIfAbsent(response.festivalKey());
+                festivals.add(festival);
+            }
+        }
         festivalJpaRepository.saveAll(festivals);
     }
 }

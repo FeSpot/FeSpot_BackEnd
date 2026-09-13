@@ -180,6 +180,7 @@ class PopularReportNotificationRepositoryTest {
     private ReportLocation persistLocation(Festival festival) {
         return entityManager.persist(ReportLocation.create(
                 festival,
+                "메인무대",
                 35.1532,
                 129.1187));
     }
@@ -193,6 +194,7 @@ class PopularReportNotificationRepositoryTest {
                 .user(user)
                 .reportLocation(location)
                 .content(content)
+                .originalLocation("메인 스테이지")
                 .congestionLevel(CongestionLevel.NORMAL)
                 .build());
     }

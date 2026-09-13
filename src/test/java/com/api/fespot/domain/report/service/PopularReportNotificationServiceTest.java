@@ -268,12 +268,14 @@ class PopularReportNotificationServiceTest {
         ReflectionTestUtils.setField(festival, "id", FESTIVAL_ID);
         ReportLocation location = ReportLocation.create(
                 festival,
+                "메인무대",
                 35.1532,
                 129.1187);
         Report report = Report.builder()
                 .user(User.create("reporter@example.com", "제보자"))
                 .reportLocation(location)
                 .content("혼잡해요")
+                .originalLocation("메인 스테이지")
                 .congestionLevel(CongestionLevel.CROWDED)
                 .build();
         ReflectionTestUtils.setField(report, "id", REPORT_ID);

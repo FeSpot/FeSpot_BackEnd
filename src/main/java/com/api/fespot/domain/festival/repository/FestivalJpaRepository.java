@@ -7,6 +7,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface FestivalJpaRepository extends JpaRepository<Festival, Long> {
 
     Optional<Festival> findByContentIdAndYear(String contentId, int year);
-
-    boolean existsByContentIdAndYear(String contentId, int year);
 }

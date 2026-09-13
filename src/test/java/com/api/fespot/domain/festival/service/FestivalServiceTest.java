@@ -80,6 +80,9 @@ class FestivalServiceTest {
         assertThat(festivalsCaptor.getValue())
                 .extracting(Festival::getYear)
                 .containsOnly(2026);
+        assertThat(festivalsCaptor.getValue())
+                .extracting(Festival::getFestivalKey)
+                .containsExactly(FestivalKey.BUSAN_SEA_FESTIVAL, FestivalKey.BUSAN_INTERNATIONAL_ROCK_FESTIVAL);
     }
 
     @Test
@@ -89,8 +92,8 @@ class FestivalServiceTest {
                 mock(FestivalJpaRepository.class);
         given(festivalRepository.findByYear(2026))
                 .willReturn(List.of(festival("100", "부산바다축제")));
-        given(festivalJpaRepository.existsByContentIdAndYear("100", 2026))
-                .willReturn(true);
+        given(festivalJpaRepository.findByContentIdAndYear("100", 2026))
+                .willReturn(Optional.of(Festival.create("100", 2026, FestivalKey.BUSAN_SEA_FESTIVAL)));
         FestivalService festivalService = new FestivalService(
                 festivalRepository,
                 festivalJpaRepository,
@@ -102,6 +105,24 @@ class FestivalServiceTest {
                 ArgumentCaptor.captor();
         verify(festivalJpaRepository).saveAll(festivalsCaptor.capture());
         assertThat(festivalsCaptor.getValue()).isEmpty();
+    }
+
+    @Test
+    void fillsMissingFestivalKeyWithoutCreatingAnotherFestival() {
+        FestivalRepository festivalRepository = mock(FestivalRepository.class);
+        FestivalJpaRepository festivalJpaRepository = mock(FestivalJpaRepository.class);
+        Festival existing = Festival.create("100", 2026);
+        given(festivalRepository.findByYear(2026))
+                .willReturn(List.of(festival("100", "부산바다축제")));
+        given(festivalJpaRepository.findByContentIdAndYear("100", 2026))
+                .willReturn(Optional.of(existing));
+        FestivalService festivalService = new FestivalService(
+                festivalRepository, festivalJpaRepository, mock(AiFestivalClient.class));
+
+        festivalService.getHomeFestivals(2026);
+
+        assertThat(existing.getFestivalKey()).isEqualTo(FestivalKey.BUSAN_SEA_FESTIVAL);
+        verify(festivalJpaRepository).saveAll(List.of(existing));
     }
 
     @Test

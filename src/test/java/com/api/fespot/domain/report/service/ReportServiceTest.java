@@ -12,8 +12,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
+import com.api.fespot.domain.report.client.AiReportClient;
+import com.api.fespot.domain.report.client.dto.AiNormalizedLocationRes;
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
@@ -39,6 +42,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.data.domain.Limit;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class ReportServiceTest {
 
@@ -48,6 +53,8 @@ class ReportServiceTest {
     private static final double LATITUDE = 35.1532;
     private static final double LONGITUDE = 129.1187;
     private static final String IMAGE_URL = "https://example.com/report.jpg";
+    private static final String SIGNATURE_NAME = "메인무대";
+    private static final String ORIGINAL_LOCATION = "  메인 스테이지  ";
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final FestivalJpaRepository festivalJpaRepository =
@@ -57,15 +64,19 @@ class ReportServiceTest {
     private final ReportRepository reportRepository = mock(ReportRepository.class);
     private final ReportLikeRepository reportLikeRepository =
             mock(ReportLikeRepository.class);
+    private final AiReportClient aiReportClient = mock(AiReportClient.class);
     private final ReportService reportService = new ReportService(
             userRepository,
             festivalJpaRepository,
             reportLocationRepository,
             reportRepository,
-            reportLikeRepository);
+            reportLikeRepository,
+            aiReportClient,
+            new TransactionTemplate(mock(PlatformTransactionManager.class)));
 
     @Test
     void createsLocationAndReportWhenNearbyLocationDoesNotExist() {
+        givenNormalizedLocation();
         User user = user();
         Festival festival = festival();
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
@@ -76,7 +87,11 @@ class ReportServiceTest {
                 any(LocalDateTime.class)))
                 .willReturn(List.of());
         given(reportLocationRepository.save(any(ReportLocation.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+                .willAnswer(invocation -> {
+                    ReportLocation location = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(location, "id", 10L);
+                    return location;
+                });
         given(reportRepository.save(any(Report.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -84,19 +99,25 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                IMAGE_URL);
+                request());
 
         ArgumentCaptor<ReportLocation> locationCaptor =
                 ArgumentCaptor.forClass(ReportLocation.class);
         verify(reportLocationRepository).save(locationCaptor.capture());
         ReportLocation savedLocation = locationCaptor.getValue();
         assertThat(savedLocation.getFestival()).isSameAs(festival);
+        assertThat(savedLocation.getSignatureName()).isNull();
         assertThat(savedLocation.getAnchorLatitude()).isEqualTo(LATITUDE);
         assertThat(savedLocation.getAnchorLongitude()).isEqualTo(LONGITUDE);
         assertThat(report.getUser()).isSameAs(user);
         assertThat(report.getReportLocation()).isSameAs(savedLocation);
         assertThat(report.getImageUrl()).isEqualTo(IMAGE_URL);
+        assertThat(report.getOriginalLocation()).isEqualTo(ORIGINAL_LOCATION);
+
+        InOrder order = inOrder(reportRepository, aiReportClient, reportLocationRepository);
+        order.verify(reportRepository).save(any(Report.class));
+        order.verify(aiReportClient).getNormalizedLocation(ORIGINAL_LOCATION, "busan_sea_festival");
+        order.verify(reportLocationRepository).updateSignatureNameIfAbsent(10L, SIGNATURE_NAME);
     }
 
     @Test
@@ -105,10 +126,12 @@ class ReportServiceTest {
         Festival festival = festival();
         ReportLocation nearest = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE + 0.00005,
                 LONGITUDE);
         ReportLocation farther = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE + 0.00015,
                 LONGITUDE);
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
@@ -125,15 +148,19 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null);
+                request());
 
         assertThat(report.getReportLocation()).isSameAs(nearest);
+        assertThat(report.getOriginalLocation()).isEqualTo(ORIGINAL_LOCATION);
+        assertThat(nearest.getSignatureName()).isEqualTo(SIGNATURE_NAME);
+        assertThat(nearest.getAnchorLatitude()).isEqualTo(LATITUDE + 0.00005);
         verify(reportLocationRepository, never()).save(any(ReportLocation.class));
+        verifyNoInteractions(aiReportClient);
     }
 
     @Test
     void createsLocationWhenEveryExistingLocationIsOutsideTwentyFiveMeters() {
+        givenNormalizedLocation();
         Festival festival = festival();
         given(userRepository.findById(USER_ID)).willReturn(Optional.of(user()));
         given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
@@ -143,6 +170,7 @@ class ReportServiceTest {
                 any(LocalDateTime.class)))
                 .willReturn(List.of(ReportLocation.create(
                         festival,
+                        SIGNATURE_NAME,
                         LATITUDE + 0.001,
                         LONGITUDE)));
         given(reportLocationRepository.save(any(ReportLocation.class)))
@@ -154,8 +182,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null);
+                request());
 
         verify(reportLocationRepository).save(any(ReportLocation.class));
     }
@@ -168,8 +195,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null))
+                request()))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
                                 .isEqualTo(UserErrorResponseCode.USER_NOT_FOUND_404));
@@ -190,8 +216,7 @@ class ReportServiceTest {
                 USER_ID,
                 CONTENT_ID,
                 YEAR,
-                request(),
-                null))
+                request()))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
                                 .isEqualTo(
@@ -381,6 +406,9 @@ class ReportServiceTest {
         assertThat(page.getItems())
                 .extracting(ReportFeedRes::likedByMe)
                 .containsExactly(false, true);
+        assertThat(page.getItems())
+                .extracting(ReportFeedRes::originalLocation)
+                .containsExactly(ORIGINAL_LOCATION, ORIGINAL_LOCATION);
         assertThat(page.getPageInfo().hasNext()).isTrue();
         assertThat(page.getPageInfo().nextCursor()).isEqualTo("30");
         verify(reportRepository).findFeedByFestival(
@@ -523,11 +551,13 @@ class ReportServiceTest {
         assertThat(summaries).containsExactly(
                 new ReportSummaryRes(
                         20L,
+                        SIGNATURE_NAME,
                         2,
                         null,
                         secondLatestAt),
                 new ReportSummaryRes(
                         10L,
+                        SIGNATURE_NAME,
                         3,
                         CongestionLevel.CROWDED,
                         firstLatestAt));
@@ -560,6 +590,7 @@ class ReportServiceTest {
 
         assertThat(summaries).containsExactly(new ReportSummaryRes(
                 10L,
+                SIGNATURE_NAME,
                 4,
                 CongestionLevel.CROWDED,
                 latestAt));
@@ -598,12 +629,19 @@ class ReportServiceTest {
         verifyNoInteractions(reportRepository);
     }
 
+    private void givenNormalizedLocation() {
+        given(aiReportClient.getNormalizedLocation(ORIGINAL_LOCATION, "busan_sea_festival"))
+                .willReturn(new AiNormalizedLocationRes(SIGNATURE_NAME, true));
+    }
+
     private ReportCreateReq request() {
         return new ReportCreateReq(
                 LATITUDE,
                 LONGITUDE,
                 "메인 무대 앞에 사람이 많아요.",
-                CongestionLevel.CROWDED);
+                CongestionLevel.CROWDED,
+                IMAGE_URL,
+                ORIGINAL_LOCATION);
     }
 
     private User user() {
@@ -611,12 +649,13 @@ class ReportServiceTest {
     }
 
     private Festival festival() {
-        return Festival.create(CONTENT_ID, YEAR);
+        return Festival.create(CONTENT_ID, YEAR, FestivalKey.BUSAN_SEA_FESTIVAL);
     }
 
     private Report report(Festival festival, Long id, LocalDateTime createdAt) {
         ReportLocation location = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE,
                 LONGITUDE);
         Report report = buildReport(
@@ -633,6 +672,7 @@ class ReportServiceTest {
     private ReportLocation reportLocation(Festival festival, Long id) {
         ReportLocation location = ReportLocation.create(
                 festival,
+                SIGNATURE_NAME,
                 LATITUDE,
                 LONGITUDE);
         ReflectionTestUtils.setField(location, "id", id);
@@ -667,6 +707,7 @@ class ReportServiceTest {
                 .user(user)
                 .reportLocation(location)
                 .content(content)
+                .originalLocation(ORIGINAL_LOCATION)
                 .congestionLevel(congestionLevel)
                 .imageUrl(imageUrl)
                 .build();

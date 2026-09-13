@@ -45,10 +45,12 @@ class ReportRepositoryTest {
                 "사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         ReportLocation otherLocation = entityManager.persist(ReportLocation.create(
                 otherFestival,
+                "메인 무대",
                 35.1532,
                 129.1187));
 
@@ -87,6 +89,7 @@ class ReportRepositoryTest {
                 "다른 사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
 
@@ -127,6 +130,7 @@ class ReportRepositoryTest {
                 "다른 사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         Report report = persistReport(user, location, "삭제할 제보");
@@ -162,10 +166,12 @@ class ReportRepositoryTest {
                 "사용자"));
         ReportLocation location = entityManager.persist(ReportLocation.create(
                 festival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         ReportLocation otherLocation = entityManager.persist(ReportLocation.create(
                 otherFestival,
+                "메인 무대",
                 35.1532,
                 129.1187));
         LocalDateTime activeSince = LocalDateTime.of(2026, 8, 23, 12, 0);
@@ -202,6 +208,7 @@ class ReportRepositoryTest {
                 .user(user)
                 .reportLocation(location)
                 .content(content)
+                .originalLocation("메인 스테이지")
                 .congestionLevel(CongestionLevel.NORMAL)
                 .imageUrl(null)
                 .build());
