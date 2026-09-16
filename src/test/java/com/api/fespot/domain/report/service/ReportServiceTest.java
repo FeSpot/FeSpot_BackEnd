@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.inOrder;
@@ -21,6 +22,7 @@ import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.exception.ReportLocationErrorResponseCode;
 import com.api.fespot.domain.report.repository.ReportLikeCount;
 import com.api.fespot.domain.report.repository.ReportLikeRepository;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
@@ -380,9 +382,11 @@ class ReportServiceTest {
         given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
                 .willReturn(Optional.of(festival));
         given(reportRepository.findFeedByFestival(
-                festival,
-                cursor,
-                Limit.of(size + 1)))
+                eq(festival),
+                isNull(),
+                any(LocalDateTime.class),
+                eq(cursor),
+                eq(Limit.of(size + 1))))
                 .willReturn(List.of(
                         report(festival, 40L, createdAt),
                         report(festival, 30L, createdAt),
@@ -396,6 +400,7 @@ class ReportServiceTest {
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
                 USER_ID,
                 CONTENT_ID,
+                null,
                 YEAR,
                 cursor,
                 size);
@@ -415,11 +420,14 @@ class ReportServiceTest {
         assertThat(page.getPageInfo().hasNext()).isTrue();
         assertThat(page.getPageInfo().nextCursor()).isEqualTo("30");
         verify(reportRepository).findFeedByFestival(
-                festival,
-                cursor,
-                Limit.of(size + 1));
+                eq(festival),
+                isNull(),
+                any(LocalDateTime.class),
+                eq(cursor),
+                eq(Limit.of(size + 1)));
         verify(reportLikeRepository).countByReportIds(reportIds);
         verify(reportLikeRepository).findLikeReportIds(USER_ID, reportIds);
+        verifyNoInteractions(reportLocationRepository);
     }
 
     @Test
@@ -430,9 +438,11 @@ class ReportServiceTest {
         given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
                 .willReturn(Optional.of(festival));
         given(reportRepository.findFeedByFestival(
-                festival,
-                null,
-                Limit.of(size + 1)))
+                eq(festival),
+                isNull(),
+                any(LocalDateTime.class),
+                isNull(),
+                eq(Limit.of(size + 1))))
                 .willReturn(List.of(
                         report(festival, 20L, createdAt),
                         report(festival, 10L, createdAt)));
@@ -440,6 +450,7 @@ class ReportServiceTest {
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
                 null,
                 CONTENT_ID,
+                null,
                 YEAR,
                 null,
                 size);
@@ -458,14 +469,17 @@ class ReportServiceTest {
         given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
                 .willReturn(Optional.of(festival));
         given(reportRepository.findFeedByFestival(
-                festival,
-                null,
-                Limit.of(size + 1)))
+                eq(festival),
+                isNull(),
+                any(LocalDateTime.class),
+                isNull(),
+                eq(Limit.of(size + 1))))
                 .willReturn(List.of());
 
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
                 null,
                 CONTENT_ID,
+                null,
                 YEAR,
                 null,
                 size);
@@ -484,6 +498,7 @@ class ReportServiceTest {
         assertThatThrownBy(() -> reportService.getReportFeedList(
                 null,
                 CONTENT_ID,
+                null,
                 YEAR,
                 null,
                 10))
@@ -502,9 +517,11 @@ class ReportServiceTest {
         given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
                 .willReturn(Optional.of(festival));
         given(reportRepository.findFeedByFestival(
-                festival,
-                null,
-                Limit.of(3)))
+                eq(festival),
+                isNull(),
+                any(LocalDateTime.class),
+                isNull(),
+                eq(Limit.of(3))))
                 .willReturn(List.of(
                         report(festival, 20L, now.minusMinutes(31)),
                         report(festival, 10L, now.minusMinutes(29))));
@@ -512,6 +529,7 @@ class ReportServiceTest {
         CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
                 null,
                 CONTENT_ID,
+                null,
                 YEAR,
                 null,
                 2);
@@ -519,6 +537,118 @@ class ReportServiceTest {
         assertThat(page.getItems())
                 .extracting(ReportFeedRes::expired)
                 .containsExactly(true, false);
+    }
+
+    @Test
+    void returnsLocationFeedWithLikesAndUsesQueryCutoffForExpiration() {
+        Festival festival = festival();
+        ReflectionTestUtils.setField(festival, "id", 1L);
+        ReportLocation location = reportLocation(festival, 10L);
+        Long cursor = 50L;
+        int size = 2;
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportLocationRepository.findById(location.getId()))
+                .willReturn(Optional.of(location));
+        given(reportRepository.findFeedByFestival(
+                eq(festival), eq(location.getId()), any(LocalDateTime.class),
+                eq(cursor), eq(Limit.of(size + 1))))
+                .willAnswer(invocation -> {
+                    LocalDateTime activeSince = invocation.getArgument(2);
+                    return List.of(
+                            report(location, 40L, CongestionLevel.CROWDED, activeSince.plusMinutes(1)),
+                            report(location, 30L, CongestionLevel.NORMAL, activeSince),
+                            report(location, 20L, CongestionLevel.SAFE, activeSince));
+                });
+        List<Long> reportIds = List.of(40L, 30L);
+        given(reportLikeRepository.countByReportIds(reportIds))
+                .willReturn(List.of(likeCount(40L, 2L)));
+        given(reportLikeRepository.findLikeReportIds(USER_ID, reportIds))
+                .willReturn(List.of(30L));
+        LocalDateTime earliestCutoff = LocalDateTime.now().minusMinutes(30);
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                USER_ID, CONTENT_ID, location.getId(), YEAR, cursor, size);
+
+        LocalDateTime latestCutoff = LocalDateTime.now().minusMinutes(30);
+        ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(reportRepository).findFeedByFestival(
+                eq(festival), eq(location.getId()), cutoffCaptor.capture(),
+                eq(cursor), eq(Limit.of(size + 1)));
+        assertThat(cutoffCaptor.getValue()).isBetween(earliestCutoff, latestCutoff);
+        assertThat(page.getItems()).extracting(ReportFeedRes::reportId)
+                .containsExactly(40L, 30L);
+        assertThat(page.getItems()).extracting(ReportFeedRes::expired)
+                .containsExactly(false, false);
+        assertThat(page.getItems()).extracting(ReportFeedRes::likeCount)
+                .containsExactly(2L, 0L);
+        assertThat(page.getItems()).extracting(ReportFeedRes::likedByMe)
+                .containsExactly(false, true);
+        assertThat(page.getPageInfo().hasNext()).isTrue();
+        assertThat(page.getPageInfo().nextCursor()).isEqualTo("30");
+        verify(reportLikeRepository).countByReportIds(reportIds);
+        verify(reportLikeRepository).findLikeReportIds(USER_ID, reportIds);
+    }
+
+    @Test
+    void returnsEmptyFeedWhenValidLocationHasNoActiveReports() {
+        Festival festival = festival();
+        ReflectionTestUtils.setField(festival, "id", 1L);
+        ReportLocation location = reportLocation(festival, 10L);
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportLocationRepository.findById(location.getId()))
+                .willReturn(Optional.of(location));
+        given(reportRepository.findFeedByFestival(
+                eq(festival), eq(location.getId()), any(LocalDateTime.class),
+                isNull(), eq(Limit.of(11))))
+                .willReturn(List.of());
+
+        CursorPage<ReportFeedRes> page = reportService.getReportFeedList(
+                null, CONTENT_ID, location.getId(), YEAR, null, 10);
+
+        assertThat(page.getItems()).isEmpty();
+        assertThat(page.getPageInfo().hasNext()).isFalse();
+        assertThat(page.getPageInfo().nextCursor()).isNull();
+        verify(reportRepository).findFeedByFestival(
+                eq(festival), eq(location.getId()), any(LocalDateTime.class),
+                isNull(), eq(Limit.of(11)));
+        verifyNoInteractions(reportLikeRepository);
+    }
+
+    @Test
+    void rejectsFeedWhenLocationDoesNotExist() {
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival()));
+        given(reportLocationRepository.findById(10L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.getReportFeedList(
+                null, CONTENT_ID, 10L, YEAR, null, 10))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(ReportLocationErrorResponseCode.REPORT_LOCATION_NOT_FOUND));
+
+        verifyNoInteractions(reportRepository, reportLikeRepository);
+    }
+
+    @Test
+    void rejectsFeedWhenLocationBelongsToAnotherFestival() {
+        Festival festival = festival();
+        Festival otherFestival = Festival.create(CONTENT_ID, YEAR + 1);
+        ReflectionTestUtils.setField(festival, "id", 1L);
+        ReflectionTestUtils.setField(otherFestival, "id", 2L);
+        given(festivalJpaRepository.findByContentIdAndYear(CONTENT_ID, YEAR))
+                .willReturn(Optional.of(festival));
+        given(reportLocationRepository.findById(10L))
+                .willReturn(Optional.of(reportLocation(otherFestival, 10L)));
+
+        assertThatThrownBy(() -> reportService.getReportFeedList(
+                null, CONTENT_ID, 10L, YEAR, null, 10))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(ReportLocationErrorResponseCode.REPORT_LOCATION_FESTIVAL_MISMATCH));
+
+        verifyNoInteractions(reportRepository, reportLikeRepository);
     }
 
     @Test

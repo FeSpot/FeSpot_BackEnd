@@ -16,15 +16,24 @@ import java.util.Optional;
 public interface ReportRepository extends JpaRepository<Report, Long> {
 
     @Query("""
-            select report
-            from Report report
-            join fetch report.reportLocation location
-            where location.festival = :festival
-              and (:cursor is null or report.id < :cursor)
-            order by report.id desc
-            """)
+        select report
+        from Report report
+        join fetch report.reportLocation location
+        where location.festival = :festival
+          and (
+              :reportLocationId is null
+              or (
+                  location.id = :reportLocationId
+                  and report.createdAt >= :activeSince
+              )
+          )
+          and (:cursor is null or report.id < :cursor)
+        order by report.id desc
+        """)
     List<Report> findFeedByFestival(
             @Param("festival") Festival festival,
+            @Param("reportLocationId") Long reportLocationId,
+            @Param("activeSince") LocalDateTime activeSince,
             @Param("cursor") Long cursor,
             Limit limit
     );

@@ -10,6 +10,7 @@ import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.entity.ReportLocation;
 import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.exception.ReportLocationErrorResponseCode;
 import com.api.fespot.domain.report.repository.ReportLikeCount;
 import com.api.fespot.domain.report.repository.ReportLikeRepository;
 import com.api.fespot.domain.report.repository.ReportLocationRepository;
@@ -21,6 +22,7 @@ import com.api.fespot.domain.user.repository.UserRepository;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -131,7 +133,7 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public CursorPage<MyReportRes> getMyReports(Long userId, Long cursor, int size) {
-       User user = getUserOrThrow(userId);
+        User user = getUserOrThrow(userId);
 
         List<Report> fetchReports = reportRepository.findCursorPageByUser(user, cursor, Limit.of(size + 1));
 
@@ -153,9 +155,9 @@ public class ReportService {
 
     @Transactional
     public void updateMyReport(Long userId, Long reportId, UpdateMyReportReq req) {
-       User user = getUserOrThrow(userId);
+        User user = getUserOrThrow(userId);
 
-        Report report = reportRepository.findByUserAndId(user,reportId)
+        Report report = reportRepository.findByUserAndId(user, reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));
 
         validateUpdateRequest(req);
@@ -167,7 +169,7 @@ public class ReportService {
 
     @Transactional
     public void deleteMyReport(Long userId, Long reportId) {
-       User user = getUserOrThrow(userId);
+        User user = getUserOrThrow(userId);
 
         Report report = reportRepository.findByUserAndId(user, reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorResponseCode.REPORT_NOT_FOUND_404));
@@ -180,6 +182,7 @@ public class ReportService {
     public CursorPage<ReportFeedRes> getReportFeedList(
             Long userId,
             String contentId,
+            Long reportLocationId,
             int year,
             Long cursor,
             int size
@@ -188,8 +191,21 @@ public class ReportService {
         Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
                 .orElseThrow(() -> new CustomException(FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
 
+        LocalDateTime activeSince = LocalDateTime.now()
+                .minusMinutes(ACTIVE_REPORT_MINUTES);
+
+        //제보 대표 장소와 축제에 해당하는 제보 대표 장소인지 검증
+        if(reportLocationId != null){
+            ReportLocation location = reportLocationRepository.findById(reportLocationId)
+                    .orElseThrow(()->new CustomException(ReportLocationErrorResponseCode.REPORT_LOCATION_NOT_FOUND));
+
+            if(!location.getFestival().getId().equals(festival.getId())){
+                throw new CustomException(ReportLocationErrorResponseCode.REPORT_LOCATION_FESTIVAL_MISMATCH);
+            }
+        }
+
         //다음 페이지 존재 여부를 확인하기 위해 요청 개수보다 1개 더 조회
-        List<Report> fetchReports = reportRepository.findFeedByFestival(festival, cursor, Limit.of(size + 1));
+        List<Report> fetchReports = reportRepository.findFeedByFestival(festival, reportLocationId, activeSince, cursor, Limit.of(size + 1));
 
         boolean hasNext = fetchReports.size() > size;
 
@@ -199,7 +215,7 @@ public class ReportService {
                 : fetchReports;
 
         //조회 결과가 비어있다면 바로 반환
-        if(pageReports.isEmpty()) {
+        if (pageReports.isEmpty()) {
             return CursorPage.empty();
         }
 
@@ -214,19 +230,16 @@ public class ReportService {
         Map<Long, Long> likeCountByReportId = new HashMap<>();
         List<ReportLikeCount> likeCounts = reportLikeRepository.countByReportIds(reportIds);
 
-        for(ReportLikeCount liekeCount : likeCounts) {
+        for (ReportLikeCount liekeCount : likeCounts) {
             likeCountByReportId.put(liekeCount.getReportId(), liekeCount.getLikeCount());
         }
 
         //현재 사용자가 좋아요한 제보 피드를 조회
         Set<Long> likedReportIds = new HashSet<>();
-        if(userId != null) {
+        if (userId != null) {
             List<Long> likeIds = reportLikeRepository.findLikeReportIds(userId, reportIds);
             likedReportIds.addAll(likeIds);
         }
-
-        LocalDateTime activeSince = LocalDateTime.now()
-                .minusMinutes(ACTIVE_REPORT_MINUTES);
 
         List<ReportFeedRes> items = pageReports.stream()
                 .map(report -> ReportFeedRes.from(
@@ -298,18 +311,18 @@ public class ReportService {
                 ).toList();
     }
 
-    private User getUserOrThrow(Long userId){
+    private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(()-> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
+                .orElseThrow(() -> new CustomException(UserErrorResponseCode.USER_NOT_FOUND_404));
     }
 
     private void validateUpdateRequest(UpdateMyReportReq req) {
         boolean hasNoChange =
                 req.imageUrl() == null
-                && req.content() == null
-                && req.congestionLevel() == null;
+                        && req.content() == null
+                        && req.congestionLevel() == null;
 
-        if(hasNoChange) {
+        if (hasNoChange) {
             throw new CustomException(ReportErrorResponseCode.REPORT_BAD_REQUEST_400);
         }
     }

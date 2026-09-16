@@ -66,7 +66,7 @@ public class ReportController {
             @Min(value = 1, message = "size는 1 이상이어야 합니다")
             @Max(value = 15, message = "size는 15이하여야 합니다")
             int size
-    ){
+    ) {
         CursorPage<MyReportRes> response = reportService.getMyReports(authPrincipal.getId(), cursor, size);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -79,7 +79,7 @@ public class ReportController {
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable Long reportId,
             @Valid @RequestBody UpdateMyReportReq req
-            ){
+    ) {
         reportService.updateMyReport(authPrincipal.getId(), reportId, req);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -91,7 +91,7 @@ public class ReportController {
     public ResponseEntity<SuccessResponse<?>> deleteMyReports(
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable Long reportId
-    ){
+    ) {
         reportService.deleteMyReport(authPrincipal.getId(), reportId);
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -107,6 +107,10 @@ public class ReportController {
             @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.")
             @Size(max = 64, message = "contentId는 64자 이하여야 합니다.") String contentId,
 
+            @RequestParam(required = false)
+            @Positive
+            Long reportLocationId,
+
             @RequestParam
             @Min(value = 2026, message = "year는 2026 이상이어야 합니다.")
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year,
@@ -119,9 +123,9 @@ public class ReportController {
             @Min(value = 1, message = "size는 1 이상이어야 합니다")
             @Max(value = 15, message = "size는 15이하여야 합니다")
             int size
-    ){
+    ) {
         Long userId = authPrincipal == null ? null : authPrincipal.getId();
-        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(userId, contentId, year, cursor, size);
+        CursorPage<ReportFeedRes> response = reportService.getReportFeedList(userId, contentId, reportLocationId, year, cursor, size);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
@@ -138,12 +142,13 @@ public class ReportController {
             @RequestParam
             @Min(value = 2026, message = "year는 2026 이상이어야 합니다.")
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year
-    ){
+    ) {
         List<ReportSummaryRes> response = reportService.getReportSummaryList(contentId, year);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
     }
+
 
     @Operation(summary = "사용자가 제보피드에 좋아요 설정")
     @PutMapping("/{reportId}/like")
@@ -151,7 +156,7 @@ public class ReportController {
             @AuthenticationPrincipal AuthPrincipal authPrincipal,
             @PathVariable Long reportId,
             @Valid @RequestBody ReportLikeReq req
-    ){
+    ) {
         reportLikeService.updateReportLike(authPrincipal.getId(), reportId, req.liked());
         return ResponseEntity
                 .status(HttpStatus.OK)
