@@ -295,7 +295,7 @@ class ReportCreationTransactionTest {
         assertThat(location.getAnchorLongitude()).isEqualTo(129.1187);
         assertThat(location.getSignatureName()).isEqualTo("메인무대");
 
-        var feed = reportService.getReportFeedList(null, festival.getContentId(), 2026, null, 10);
+        var feed = reportService.getReportFeedList(null, festival.getContentId(), null, 2026, null, 10);
         assertThat(feed.getItems()).extracting(ReportFeedRes::originalLocation)
                 .containsExactly("  푸드트럭 앞  ", "메인 스테이지", "공연장");
         assertThat(reportService.getReportSummaryList(festival.getContentId(), 2026))

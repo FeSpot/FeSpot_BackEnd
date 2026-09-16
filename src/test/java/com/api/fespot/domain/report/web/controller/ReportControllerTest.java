@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.api.fespot.domain.report.entity.CongestionLevel;
 import com.api.fespot.domain.report.entity.Report;
 import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
+import com.api.fespot.domain.report.exception.ReportLocationErrorResponseCode;
 import com.api.fespot.domain.report.service.ReportLikeService;
 import com.api.fespot.domain.report.service.ReportService;
 import com.api.fespot.domain.report.web.dto.MyReportRes;
@@ -35,6 +36,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -351,6 +353,7 @@ class ReportControllerTest {
         given(reportService.getReportFeedList(
                 null,
                 "100",
+                null,
                 2026,
                 null,
                 10))
@@ -379,7 +382,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.pageInfo.nextCursor").doesNotExist())
                 .andExpect(jsonPath("$.data.pageInfo.hasNext").value(false));
 
-        verify(reportService).getReportFeedList(null, "100", 2026, null, 10);
+        verify(reportService).getReportFeedList(null, "100", null, 2026, null, 10);
     }
 
     @Test
@@ -399,7 +402,7 @@ class ReportControllerTest {
                 List.of(item),
                 95L,
                 true);
-        given(reportService.getReportFeedList(1L, "100", 2026, 100L, 5))
+        given(reportService.getReportFeedList(1L, "100", null, 2026, 100L, 5))
                 .willReturn(response);
 
         mockMvc.perform(get("/reports/feed")
@@ -418,7 +421,74 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.data.pageInfo.nextCursor").value(95))
                 .andExpect(jsonPath("$.data.pageInfo.hasNext").value(true));
 
-        verify(reportService).getReportFeedList(1L, "100", 2026, 100L, 5);
+        verify(reportService).getReportFeedList(1L, "100", null, 2026, 100L, 5);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void readsLocationFeedWithCursorForGuestOrAuthenticatedUser(boolean authenticated) throws Exception {
+        if (authenticated) {
+            authenticate();
+        }
+        Long userId = authenticated ? 1L : null;
+        ReportFeedRes item = new ReportFeedRes(
+                95L, null, CongestionLevel.NORMAL, "입구 줄이 길어요.",
+                "정문 앞", 4L, authenticated, LocalDateTime.of(2026, 8, 22, 12, 0), false);
+        given(reportService.getReportFeedList(userId, "100", 42L, 2026, 100L, 5))
+                .willReturn(CursorPage.of(List.of(item), 95L, true));
+        var request = get("/reports/feed")
+                .param("contentId", "100")
+                .param("year", "2026")
+                .param("reportLocationId", "42")
+                .param("cursor", "100")
+                .param("size", "5");
+        if (authenticated) {
+            request.header(HttpHeaders.AUTHORIZATION, "Bearer access-token");
+        }
+
+        mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].reportId").value(95))
+                .andExpect(jsonPath("$.data.items[0].likedByMe").value(authenticated))
+                .andExpect(jsonPath("$.data.items[0].expired").value(false))
+                .andExpect(jsonPath("$.data.pageInfo.nextCursor").value("95"))
+                .andExpect(jsonPath("$.data.pageInfo.hasNext").value(true));
+
+        verify(reportService).getReportFeedList(userId, "100", 42L, 2026, 100L, 5);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "REPORT_LOCATION_NOT_FOUND, 404",
+            "REPORT_LOCATION_FESTIVAL_MISMATCH, 400"
+    })
+    void returnsDistinctLocationErrors(
+            ReportLocationErrorResponseCode errorCode,
+            int expectedStatus
+    ) throws Exception {
+        given(reportService.getReportFeedList(null, "100", 42L, 2026, null, 10))
+                .willThrow(new CustomException(errorCode));
+
+        mockMvc.perform(get("/reports/feed")
+                        .param("contentId", "100")
+                        .param("year", "2026")
+                        .param("reportLocationId", "42"))
+                .andExpect(status().is(expectedStatus))
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value(errorCode.name()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "not-a-number"})
+    void rejectsInvalidReportLocationId(String reportLocationId) throws Exception {
+        mockMvc.perform(get("/reports/feed")
+                        .param("contentId", "100")
+                        .param("year", "2026")
+                        .param("reportLocationId", reportLocationId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("GLOBAL_400_PARAMETER"));
+
+        verifyNoInteractions(reportService);
     }
 
     @Test
