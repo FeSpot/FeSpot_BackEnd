@@ -9,7 +9,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public enum CaffeineCacheDefinition {
     DAILY_FESTIVAL_FORECAST("dailyFestivalForecast", Duration.ofMinutes(5), 50),
-    FESTIVAL_AREA_FORECAST("festivalAreaForecast", Duration.ofMinutes(5), 50),
+    FESTIVAL_AREA_FORECAST("festivalAreaForecast", Duration.ofMinutes(5), 150),
     FESTIVALS_BY_YEAR("festivalsByYear", Duration.ofHours(6), 5);
 
     private final String cacheName;
