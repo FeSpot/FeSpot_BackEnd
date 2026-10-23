@@ -48,7 +48,7 @@ class UniqueViolationWrapArchTest {
                     continue;
                 }
                 Set<String> entities = uniqueEntitiesInsertedFrom(method);
-                if (!entities.isEmpty() && !method.isAnnotatedWith(WrapDataIntegrityViolation.class)) {
+                if (!entities.isEmpty() && !method.isAnnotatedWith(CreateUniqueColumn.class)) {
                     violations.add(method.getFullName() + " → " + entities);
                 }
             }
