@@ -18,7 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("""
             select user
             from User user
-            where user.id =: userId
+            where user.id = :userId
             """)
     Optional<User> findByIdForUpdate(Long userId);
 }
