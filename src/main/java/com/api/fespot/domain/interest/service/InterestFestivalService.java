@@ -7,7 +7,7 @@ import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.interest.entity.InterestFestival;
 import com.api.fespot.domain.interest.enums.InterestFestivalErrorResponseCode;
-import com.api.fespot.domain.interest.exception.InterestFestivalConflictException;
+import com.api.fespot.domain.interest.exception.InterestFestivalAlreadyExistsException;
 import com.api.fespot.domain.interest.repository.InterestFestivalRepository;
 import com.api.fespot.domain.interest.web.dto.InterestFestivalInfo;
 import com.api.fespot.domain.user.entity.User;
@@ -38,7 +38,7 @@ public class InterestFestivalService {
 
     private final UserRepository userRepository;
 
-    @CreateUniqueColumn(InterestFestivalConflictException.class)
+    @CreateUniqueColumn(InterestFestivalAlreadyExistsException.class)
     @Transactional
     public Long saveInterestFestival(Long userId, int currentYear, String contentId) {
 
