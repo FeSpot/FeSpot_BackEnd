@@ -136,6 +136,37 @@ public class PlanHttpTest {
     }
 
     @Test
+    @DisplayName("한 계획 안에 시작 시각이 같은 방문 장소가 있으면 409를 반환한다.")
+    void createPlanWithDuplicateStartAtReturns409() {
+        given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "contentId", "1",
+                        "planName", "나의 계획",
+                        "startDate", LocalDate.now().plusDays(2).toString(),
+                        "targetDate", LocalDate.now().plusDays(1).toString(),
+                        "plans", List.of(
+                                Map.of(
+                                        "startAt", "10:30:00",
+                                        "name", "카페 A",
+                                        "roadAddress", "도로명 주소 1"
+                                ),
+                                Map.of(
+                                        "startAt", "10:30:00",
+                                        "name", "카페 B",
+                                        "roadAddress", "도로명 주소 2"
+                                )
+                        )
+                ))
+                .post("/my/plan")
+                .then()
+                .statusCode(409)
+                .body("isSuccess", equalTo(false))
+                .body("code", equalTo("PLAN_CONFLICT_409"));
+    }
+
+    @Test
     @DisplayName("토큰 없이 요청하면 401을 반환한다.")
     void requestWithoutTokenReturns401() {
         given()
