@@ -15,7 +15,7 @@ import com.api.fespot.domain.plan.service.dto.PlanListResult;
 import com.api.fespot.domain.plan.web.dto.PlanRequest;
 import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
-import com.api.fespot.global.aop.CreateUniqueColumn;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -44,7 +44,7 @@ public class PlanService {
     private final VisitPlaceRepository visitPlaceRepository;
 
     @Transactional
-    @CreateUniqueColumn(PlanAlreadyExistsException.class)
+    @WrapUniqueViolation(PlanAlreadyExistsException.class)
     public VisitPlan createVisitPlan(Long userId, PlanRequest request) {
         // festivalKey가 가리키는 festival을 영속성 컨텍스트에 로딩
         Festival festival = festivalJpaRepository.findByContentIdAndYear(request.contentId(), request.startDate().getYear())
