@@ -7,7 +7,7 @@ import com.api.fespot.domain.auth.repository.SocialAccountPort;
 import com.api.fespot.domain.user.EmailNormalizer;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
-import com.api.fespot.global.aop.CreateUniqueColumn;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,7 @@ public class JpaSocialAccountAdapter implements SocialAccountPort {
 
     @Override
     @Transactional
-    @CreateUniqueColumn(
+    @WrapUniqueViolation(
             value = SocialIdentityRegistrationConflictException.class,
             constraint = "uk_social_credentials_provider_user_id"
     )
