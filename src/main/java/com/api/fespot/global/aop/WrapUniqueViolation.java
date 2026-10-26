@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CreateUniqueColumn {
+public @interface WrapUniqueViolation {
 
     Class<? extends BaseException> value();
     String constraint() default "";
