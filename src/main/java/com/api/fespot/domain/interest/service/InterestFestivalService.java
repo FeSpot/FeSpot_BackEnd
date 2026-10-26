@@ -17,7 +17,6 @@ import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.code.ErrorResponseCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,13 +59,7 @@ public class InterestFestivalService {
                 .build();
 
         // 4. 관심 축제로 저장
-        InterestFestival saved;
-        try {
-            saved= interestFestivalRepository.save(interestFestival);
-        } catch (DataIntegrityViolationException e) {
-            // 4-1. 동시성 요청에 의해 unique 속성 불만족일 시 예외
-            throw new CustomException(InterestFestivalErrorResponseCode.INTEREST_FESTIVAL_ALREADY_EXISTS);
-        }
+        InterestFestival saved = interestFestivalRepository.save(interestFestival);
 
         return saved.getId();
     }
