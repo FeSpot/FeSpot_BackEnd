@@ -15,7 +15,7 @@ import java.util.Locale;
 
 @Aspect
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)  // for outer than txInterceptor.commit
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)  // for outer than txInterceptor.commit
 public class WrapDataIntegrityViolationException {
 
     @Around("@annotation(wrap)")
