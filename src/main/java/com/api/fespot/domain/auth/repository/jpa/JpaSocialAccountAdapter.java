@@ -7,6 +7,7 @@ import com.api.fespot.domain.auth.repository.SocialAccountPort;
 import com.api.fespot.domain.user.EmailNormalizer;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.global.aop.CreateUniqueColumn;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,10 @@ public class JpaSocialAccountAdapter implements SocialAccountPort {
 
     @Override
     @Transactional
+    @CreateUniqueColumn(
+            value = SocialIdentityRegistrationConflictException.class,
+            constraint = "uk_social_credentials_provider_user_id"
+    )
     public User register(SocialAccountRegistration registration) {
         String normalizedEmail = EmailNormalizer.normalize(registration.email());
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -50,9 +55,6 @@ public class JpaSocialAccountAdapter implements SocialAccountPort {
             if (isEmailUniqueConstraintViolation(exception)) {
                 throw new DuplicateEmailException();
             }
-            if (isSocialIdentityUniqueConstraintViolation(exception)) {
-                throw new SocialIdentityRegistrationConflictException();
-            }
             throw exception;
         }
     }
@@ -68,19 +70,6 @@ public class JpaSocialAccountAdapter implements SocialAccountPort {
     public boolean hasProviderRefreshToken(OAuthProvider provider, String providerUserId) {
         return credentialRepository
                 .existsByProviderAndProviderUserIdAndProviderRefreshTokenIsNotNull(provider, providerUserId);
-    }
-
-    private boolean isSocialIdentityUniqueConstraintViolation(Throwable throwable) {
-        Throwable cause = throwable;
-        while (cause != null) {
-            String message = cause.getMessage();
-            if (message != null
-                    && message.toLowerCase().contains("uk_social_credentials_provider_user_id")) {
-                return true;
-            }
-            cause = cause.getCause();
-        }
-        return false;
     }
 
     private boolean isEmailUniqueConstraintViolation(Throwable throwable) {
