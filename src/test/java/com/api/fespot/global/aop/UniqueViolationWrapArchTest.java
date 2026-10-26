@@ -48,13 +48,13 @@ class UniqueViolationWrapArchTest {
                     continue;
                 }
                 Set<String> entities = uniqueEntitiesInsertedFrom(method);
-                if (!entities.isEmpty() && !method.isAnnotatedWith(CreateUniqueColumn.class)) {
+                if (!entities.isEmpty() && !method.isAnnotatedWith(WrapUniqueViolation.class)) {
                     violations.add(method.getFullName() + " → " + entities);
                 }
             }
         }
 
-        assertThat(violations).as("@CreateUniqueColumn 누락").isEmpty();
+        assertThat(violations).as("@WrapUniqueViolation 누락").isEmpty();
     }
 
     // 프로젝트 내부 클래스로의 호출을 따라가며 유니크 엔티티 리포지토리의 save 계열 호출을 찾는다
