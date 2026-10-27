@@ -7,15 +7,16 @@ import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.interest.entity.InterestFestival;
 import com.api.fespot.domain.interest.enums.InterestFestivalErrorResponseCode;
+import com.api.fespot.domain.interest.exception.InterestFestivalAlreadyExistsException;
 import com.api.fespot.domain.interest.repository.InterestFestivalRepository;
 import com.api.fespot.domain.interest.web.dto.InterestFestivalInfo;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.response.CursorPage;
 import com.api.fespot.global.response.code.ErrorResponseCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class InterestFestivalService {
 
     private final UserRepository userRepository;
 
+    @WrapUniqueViolation(InterestFestivalAlreadyExistsException.class)
     @Transactional
     public Long saveInterestFestival(Long userId, int currentYear, String contentId) {
 
@@ -57,13 +59,7 @@ public class InterestFestivalService {
                 .build();
 
         // 4. 관심 축제로 저장
-        InterestFestival saved;
-        try {
-            saved= interestFestivalRepository.save(interestFestival);
-        } catch (DataIntegrityViolationException e) {
-            // 4-1. 동시성 요청에 의해 unique 속성 불만족일 시 예외
-            throw new CustomException(InterestFestivalErrorResponseCode.INTEREST_FESTIVAL_ALREADY_EXISTS);
-        }
+        InterestFestival saved = interestFestivalRepository.save(interestFestival);
 
         return saved.getId();
     }

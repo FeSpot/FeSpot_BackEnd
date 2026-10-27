@@ -1,7 +1,9 @@
 package com.api.fespot.domain.auth.repository;
 
 import com.api.fespot.domain.auth.enums.OAuthProvider;
+import com.api.fespot.domain.auth.exception.AuthErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
+import com.api.fespot.global.exception.BaseException;
 
 import java.util.Optional;
 
@@ -60,10 +62,10 @@ public interface SocialAccountPort {
     ) {
     }
 
-    final class SocialIdentityRegistrationConflictException extends RuntimeException {
+    final class SocialIdentityRegistrationConflictException extends BaseException {
 
-        public SocialIdentityRegistrationConflictException() {
-            super("Social identity registration conflicted");
+        public SocialIdentityRegistrationConflictException(Throwable cause) {
+            super(AuthErrorResponseCode.DUPLICATED_SOCIAL_ACCOUNT_409, cause);
         }
     }
 }
