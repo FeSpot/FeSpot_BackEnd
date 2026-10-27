@@ -15,11 +15,12 @@ import java.util.Locale;
 
 @Aspect
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 2)  // for outer than txInterceptor.commit
+// Spring이 어노테이션 인자를 바인딩할 수 있도록 ExposeInvocationInterceptor 이후에 실행한다.
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class WrapDataIntegrityViolationException {
 
     @Around("@annotation(wrap)")
-    public Object wrap(ProceedingJoinPoint pjp, WrapUniqueViolation wrap) throws Throwable {
+    public Object wrap(ProceedingJoinPoint pjp, CreateUniqueColumn wrap) throws Throwable {
 
 
         try {
