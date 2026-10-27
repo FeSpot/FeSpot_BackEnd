@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum FestivalErrorResponseCode implements BaseResponseCode {
     FESTIVAL_NOT_FOUND_404("FESTIVAL_NOT_FOUND_404", 404, "축제 정보를 찾을 수 없습니다."),
+    FESTIVAL_LIKE_ALREADY_EXIST_409("FESTIVAL_LIKE_ALREADY_EXIST_409",409, "이미 축제 좋아요 설정이 되어 있습니다."),
+    FESTIVAL_NOTIFICATION_ALREADY_EXIST_409("FESTIVAL_NOTIFICATION_ALREADY_EXIST_409", 409, "이미 축제 알림 설정이 되어 있습니다."),
+    FESTIVAL_ALREADY_EXIST_409("FESTIVAL_ALREADY_EXIST_409", 409, "이미 저장된 축제입니다."),
     KTO_API_ERROR_502("FESTIVAL_KTO_API_ERROR_502", 502, "한국관광공사 OpenAPI에서 축제 정보를 불러오지 못했습니다."),
     AI_API_ERROR_502("FESTIVAL_AI_API_ERROR_502", 502, "AI 혼잡도 예측 정보를 불러오지 못했습니다.");
 

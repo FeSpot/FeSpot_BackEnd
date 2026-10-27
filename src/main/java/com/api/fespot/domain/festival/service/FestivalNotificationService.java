@@ -2,14 +2,15 @@ package com.api.fespot.domain.festival.service;
 
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalNotification;
+import com.api.fespot.domain.festival.exception.DuplicateFestivalNotificationException;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalNotificationRepository;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
-import com.api.fespot.global.response.code.ErrorResponseCode;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,10 @@ public class FestivalNotificationService {
     private final FestivalNotificationRepository festivalNotificationRepository;
 
     @Transactional
+    @WrapUniqueViolation(
+            value = DuplicateFestivalNotificationException.class,
+            constraint = "uk_festival_notification_user_festival"
+    )
     public void updateNotification(
             Long userId,
             String contentId,
