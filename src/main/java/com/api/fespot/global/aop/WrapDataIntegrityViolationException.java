@@ -20,7 +20,7 @@ import java.util.Locale;
 public class WrapDataIntegrityViolationException {
 
     @Around("@annotation(wrap)")
-    public Object wrap(ProceedingJoinPoint pjp, CreateUniqueColumn wrap) throws Throwable {
+    public Object wrap(ProceedingJoinPoint pjp, WrapUniqueViolation wrap) throws Throwable {
 
 
         try {
