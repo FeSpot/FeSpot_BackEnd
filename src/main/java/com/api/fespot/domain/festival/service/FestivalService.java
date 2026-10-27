@@ -10,12 +10,14 @@ import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
+import com.api.fespot.domain.festival.exception.DuplicateFestivalException;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.festival.web.dto.FestivalAreaCongestionForecastRes;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
+import com.api.fespot.global.aop.CreateUniqueColumn;
 import com.api.fespot.global.exception.CustomException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -37,6 +39,10 @@ public class FestivalService {
     private final FestivalJpaRepository festivalJpaRepository;
     private final AiFestivalClient aiFestivalClient;
 
+    @CreateUniqueColumn(
+            value = DuplicateFestivalException.class,
+            constraint = "uk_festival_contents_id_year"
+    )
     public List<FestivalHomeRes> getHomeFestivals(int year) {
         try {
             List<FestivalSummaryReadModel> festivals = festivalRepository.findByYear(year);

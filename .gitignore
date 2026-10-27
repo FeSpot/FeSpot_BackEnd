@@ -6,7 +6,7 @@ build/
 !**/src/test/**/build/
 application-local.properties
 AGENTS.md
-
+/performance
 ### STS ###
 .apt_generated
 .classpath
