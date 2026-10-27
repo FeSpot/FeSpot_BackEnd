@@ -8,7 +8,9 @@ import static org.mockito.Mockito.spy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastReq;
@@ -17,12 +19,15 @@ import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionFore
 import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionForecastResponse;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.global.exception.CustomException;
+import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.test.web.client.ResponseCreator;
 import org.springframework.web.client.RestClient;
 
 class AiFestivalClientTest {
@@ -125,8 +130,9 @@ class AiFestivalClientTest {
                           },
                           "nearby_1km_summary": {
                             "radius_m": 1000,
-                            "place_count": 1
-                          }
+                            "place_count": 0
+                          },
+                          "nearby_1km_congestion": []
                         }
                         """, MediaType.APPLICATION_JSON));
 
@@ -181,5 +187,182 @@ class AiFestivalClientTest {
                                 .isEqualTo(
                                         FestivalErrorResponseCode.AI_API_ERROR_502));
         server.verify();
+    }
+
+    @Test
+    void rejectsIncompleteDailyResponse() {
+        server.expect(requestTo("https://ai.example.test/predict/date"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.fetchDailyFestivalCongestionForecast(
+                new AiDailyFestivalCongestionForecastReq(
+                        "부산바다축제", "2026-08-07", false)))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(FestivalErrorResponseCode.AI_API_ERROR_502));
+        server.verify();
+    }
+
+    @Test
+    void rejectsIncompleteAreaResponse() {
+        server.expect(requestTo("https://ai.example.test/predict/time"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.fetchFestivalAreaCongestionForecast(
+                new AiFestivalAreaCongestionForecastReq(
+                        "busan_sea_festival", "2026-08-07", "19:00", false)))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(FestivalErrorResponseCode.AI_API_ERROR_502));
+        server.verify();
+    }
+
+    @Test
+    void mapsOnlyKnownRangeFailuresToBadRequest() {
+        assertDailyFailure(withStatus(HttpStatus.BAD_REQUEST),
+                FestivalErrorResponseCode.AI_PREDICTION_RANGE_400);
+        assertAreaFailure(withStatus(HttpStatus.BAD_REQUEST),
+                FestivalErrorResponseCode.AI_PREDICTION_RANGE_400);
+    }
+
+    @Test
+    void mapsOtherHttpAndIoFailuresToBadGateway() {
+        for (HttpStatus status : new HttpStatus[]{
+                HttpStatus.UNAUTHORIZED, HttpStatus.NOT_FOUND,
+                HttpStatus.UNPROCESSABLE_ENTITY, HttpStatus.INTERNAL_SERVER_ERROR}) {
+            assertDailyFailure(withStatus(status), FestivalErrorResponseCode.AI_API_ERROR_502);
+            assertAreaFailure(withStatus(status), FestivalErrorResponseCode.AI_API_ERROR_502);
+        }
+        assertDailyFailure(withException(new IOException("read failed")),
+                FestivalErrorResponseCode.AI_API_ERROR_502);
+        assertAreaFailure(withException(new IOException("read failed")),
+                FestivalErrorResponseCode.AI_API_ERROR_502);
+    }
+
+    @Test
+    void rejectsMalformedAndMissingNestedDailyData() {
+        for (String json : new String[]{
+                "{broken",
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "recommended_arrival":null,"hourly_congestion":[{"time":"19:00~20:00",
+                         "festival_congestion":{"score":59.0,"level":"보통"}}]}
+                        """,
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "recommended_arrival":{"time":"16:00","time_range":"16:00~17:00",
+                         "main_event_time":"19:00","reason":"reason",
+                         "expected_congestion":{"score":null,"level":"보통"}},
+                         "hourly_congestion":[{"time":"19:00~20:00",
+                         "festival_congestion":{"score":59.0,"level":"보통"}}]}
+                        """,
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "recommended_arrival":{"time":"16:00","time_range":"16:00~17:00",
+                         "main_event_time":"19:00","reason":"reason",
+                         "expected_congestion":{"score":34.3,"level":"보통"}},
+                         "hourly_congestion":[null]}
+                        """
+        }) {
+            assertDailyFailure(withSuccess(json, MediaType.APPLICATION_JSON),
+                    FestivalErrorResponseCode.AI_API_ERROR_502);
+        }
+    }
+
+    @Test
+    void rejectsMalformedAndMissingNestedAreaData() {
+        for (String json : new String[]{
+                "{broken",
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "time":"19:00","time_range":"19:00~20:00",
+                         "nearby_1km_summary":null,"nearby_1km_congestion":[]}
+                        """,
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "time":"19:00","time_range":"19:00~20:00",
+                         "nearby_1km_summary":{"radius_m":1000,"place_count":1},
+                         "nearby_1km_congestion":[null]}
+                        """,
+                """
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "time":"19:00","time_range":"19:00~20:00",
+                         "nearby_1km_summary":{"radius_m":1000,"place_count":1},
+                         "nearby_1km_congestion":[{"place_name":"cafe","category":"cafe",
+                         "distance_m":null,"level":"보통"}]}
+                        """
+        }) {
+            assertAreaFailure(withSuccess(json, MediaType.APPLICATION_JSON),
+                    FestivalErrorResponseCode.AI_API_ERROR_502);
+        }
+    }
+
+    @Test
+    void acceptsAbsentOptionalAreaDetails() {
+        server.expect(requestTo("https://ai.example.test/predict/time"))
+                .andRespond(withSuccess("""
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "time":"19:00","time_range":"19:00~20:00",
+                         "nearby_1km_summary":{"radius_m":1000,"place_count":1},
+                         "nearby_1km_congestion":[{"place_name":"cafe","category":"cafe",
+                         "distance_m":123.0,"score":null,"level":"보통",
+                         "longitude":null,"latitude":null}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        AiFestivalAreaCongestionForecastResponse response =
+                client.fetchFestivalAreaCongestionForecast(areaRequest());
+        assertThat(response.nearby1kmCongestion()).hasSize(1);
+        assertThat(response.nearby1kmCongestion().getFirst().score()).isNull();
+        assertThat(response.nearby1kmCongestion().getFirst().longitude()).isNull();
+        server.verify();
+    }
+
+    @Test
+    void rejectsEmptyHourlyCongestion() {
+        server.expect(requestTo("https://ai.example.test/predict/date"))
+                .andRespond(withSuccess("""
+                        {"festival_id":"id","festival_name":"name","date":"2026-08-07",
+                         "recommended_arrival":{"time":"16:00","time_range":"16:00~17:00",
+                         "main_event_time":"19:00","reason":"reason",
+                         "expected_congestion":{"score":34.3,"level":"보통"}},
+                         "hourly_congestion":[]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.fetchDailyFestivalCongestionForecast(
+                new AiDailyFestivalCongestionForecastReq(
+                        "부산바다축제", "2026-08-07", false)))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode())
+                                .isEqualTo(FestivalErrorResponseCode.AI_API_ERROR_502));
+        server.verify();
+    }
+
+    private void assertDailyFailure(
+            ResponseCreator reply, FestivalErrorResponseCode expectedCode) {
+        server.expect(requestTo("https://ai.example.test/predict/date"))
+                .andRespond(reply);
+        assertThatThrownBy(() -> client.fetchDailyFestivalCongestionForecast(
+                new AiDailyFestivalCongestionForecastReq(
+                        "부산바다축제", "2026-08-07", false)))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode()).isEqualTo(expectedCode));
+        server.verify();
+        server.reset();
+    }
+
+    private void assertAreaFailure(
+            ResponseCreator reply, FestivalErrorResponseCode expectedCode) {
+        server.expect(requestTo("https://ai.example.test/predict/time"))
+                .andRespond(reply);
+        assertThatThrownBy(() -> client.fetchFestivalAreaCongestionForecast(areaRequest()))
+                .isInstanceOfSatisfying(CustomException.class, exception ->
+                        assertThat(exception.getBaseResponseCode()).isEqualTo(expectedCode));
+        server.verify();
+        server.reset();
+    }
+
+    private AiFestivalAreaCongestionForecastReq areaRequest() {
+        return new AiFestivalAreaCongestionForecastReq(
+                "busan_sea_festival", "2026-08-07", "19:00", false);
     }
 }

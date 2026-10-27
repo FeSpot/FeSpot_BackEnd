@@ -14,11 +14,13 @@ import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionFor
 import com.api.fespot.domain.festival.client.ai.dto.AiDailyFestivalCongestionForecastResponse.RecommendedArrival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalKey;
+import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.service.FestivalLikeService;
 import com.api.fespot.domain.festival.service.FestivalNotificationService;
 import com.api.fespot.domain.festival.service.FestivalService;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
+import com.api.fespot.global.exception.CustomException;
 import com.api.fespot.global.config.SecurityConfig;
 import com.api.fespot.global.security.AuthPrincipal;
 import com.api.fespot.global.security.handler.JwtAccessDeniedHandler;
@@ -160,6 +162,32 @@ class FestivalControllerTest {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(festivalService);
+    }
+
+    @Test
+    void returnsBadRequestForForecastOutsidePredictionRange() throws Exception {
+        given(festivalService.getDailyFestivalCongestionForecast(
+                FestivalKey.BUSAN_SEA_FESTIVAL, LocalDate.of(2026, 8, 7)))
+                .willThrow(new CustomException(
+                        FestivalErrorResponseCode.AI_PREDICTION_RANGE_400));
+
+        mockMvc.perform(get("/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        .param("date", "2026-08-07"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("FESTIVAL_AI_PREDICTION_RANGE_400"));
+    }
+
+    @Test
+    void returnsBadGatewayForInvalidAiForecastResponse() throws Exception {
+        given(festivalService.getDailyFestivalCongestionForecast(
+                FestivalKey.BUSAN_SEA_FESTIVAL, LocalDate.of(2026, 8, 7)))
+                .willThrow(new CustomException(FestivalErrorResponseCode.AI_API_ERROR_502));
+
+        mockMvc.perform(get("/festivals/BUSAN_SEA_FESTIVAL/daily-forecast")
+                        .param("date", "2026-08-07"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("FESTIVAL_AI_API_ERROR_502"));
     }
 
     @Test
