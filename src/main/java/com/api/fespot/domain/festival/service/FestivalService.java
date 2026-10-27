@@ -17,7 +17,7 @@ import com.api.fespot.domain.festival.repository.FestivalRepository;
 import com.api.fespot.domain.festival.web.dto.FestivalAreaCongestionForecastRes;
 import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
 import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
-import com.api.fespot.global.aop.CreateUniqueColumn;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -39,7 +39,7 @@ public class FestivalService {
     private final FestivalJpaRepository festivalJpaRepository;
     private final AiFestivalClient aiFestivalClient;
 
-    @CreateUniqueColumn(
+    @WrapUniqueViolation(
             value = DuplicateFestivalException.class,
             constraint = "uk_festival_contents_id_year"
     )

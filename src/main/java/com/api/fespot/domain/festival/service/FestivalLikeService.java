@@ -9,7 +9,7 @@ import com.api.fespot.domain.festival.repository.FestivalLikeRepository;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
-import com.api.fespot.global.aop.CreateUniqueColumn;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
 
 import java.util.Optional;
@@ -27,7 +27,7 @@ public class FestivalLikeService {
     private final FestivalLikeRepository festivalLikeRepository;
 
     @Transactional
-    @CreateUniqueColumn(
+    @WrapUniqueViolation(
             value = DuplicateFestivalLikeException.class,
             constraint = "uk_festival_like_user_festival"
     )

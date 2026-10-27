@@ -9,9 +9,8 @@ import com.api.fespot.domain.report.repository.ReportRepository;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.domain.user.exception.UserErrorResponseCode;
 import com.api.fespot.domain.user.repository.UserRepository;
-import com.api.fespot.global.aop.CreateUniqueColumn;
+import com.api.fespot.global.aop.WrapUniqueViolation;
 import com.api.fespot.global.exception.CustomException;
-import com.api.fespot.global.response.code.ErrorResponseCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +25,7 @@ public class ReportLikeService {
     private final ReportRepository reportRepository;
 
     @Transactional
-    @CreateUniqueColumn(
+    @WrapUniqueViolation(
             value = DuplicateReportLikeException.class,
             constraint = "report_like_unique"
     )
