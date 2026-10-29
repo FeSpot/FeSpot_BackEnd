@@ -1,7 +1,9 @@
 package com.api.fespot.domain.report.entity;
 
+import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.entity.BaseEntity;
+import com.api.fespot.global.exception.CustomException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -65,6 +67,9 @@ public class Report extends BaseEntity {
             CongestionLevel congestionLevel,
             String imageUrl
     ) {
+        if(user == null || reportLocation == null || content == null || originalLocation == null || congestionLevel == null) {
+            throw new CustomException(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500);
+        }
         this.user = user;
         this.reportLocation = reportLocation;
         this.content = content;
