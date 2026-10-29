@@ -1,7 +1,9 @@
 package com.api.fespot.domain.report.entity;
 
 import com.api.fespot.domain.festival.entity.Festival;
+import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.global.entity.BaseEntity;
+import com.api.fespot.global.exception.CustomException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -43,6 +45,9 @@ public class ReportLocation extends BaseEntity {
             double anchorLongitude,
             LocalDateTime lastReportedAt
     ) {
+        if(festival == null) {
+            throw new CustomException(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500);
+        }
         this.festival = festival;
         this.signatureName = signatureName;
         this.anchorLatitude = anchorLatitude;
