@@ -8,14 +8,12 @@ import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionFore
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
+import com.api.fespot.domain.festival.entity.FestivalHomeReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
-import com.api.fespot.domain.festival.web.dto.FestivalAreaCongestionForecastRes;
-import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
-import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
 import com.api.fespot.global.exception.CustomException;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -37,31 +35,29 @@ public class FestivalService {
     private final FestivalJpaRepository festivalJpaRepository;
     private final AiFestivalClient aiFestivalClient;
 
-    public List<FestivalHomeRes> getHomeFestivals(int year) {
+    public List<FestivalHomeReadModel> getHomeFestivals(int year) {
         try {
             List<FestivalSummaryReadModel> festivals = festivalRepository.findByYear(year);
-            List<FestivalHomeRes> responses = Arrays.stream(FestivalKey.values())
-                    .map(festivalKey -> toResponse(festivalKey, festivals))
+            List<FestivalHomeReadModel> results = Arrays.stream(FestivalKey.values())
+                    .map(festivalKey -> toHomeReadModel(festivalKey, festivals))
                     .toList();
 
-            registerFestivals(responses, year);
+            registerFestivals(results, year);
 
-            return responses;
+            return results;
         } catch (CustomException e) {
             return Arrays.stream(FestivalKey.values())
-                    .map(festivalKey -> FestivalHomeRes.unavailable(
+                    .map(festivalKey -> FestivalHomeReadModel.unavailable(
                             festivalKey,
                             FestivalAvailability.API_ERROR))
                     .toList();
         }
     }
 
-    public FestivalDetailRes getFestivalDetail(String contentId) {
-        FestivalDetailReadModel festival = festivalRepository.findByContentId(contentId)
+    public FestivalDetailReadModel getFestivalDetail(String contentId) {
+        return festivalRepository.findByContentId(contentId)
                 .orElseThrow(() -> new CustomException(
                         FestivalErrorResponseCode.FESTIVAL_NOT_FOUND_404));
-
-        return FestivalDetailRes.from(festival);
     }
 
     @Cacheable(cacheNames = "dailyFestivalForecast", sync = true)
@@ -79,7 +75,7 @@ public class FestivalService {
     }
 
     @Cacheable(cacheNames = "festivalAreaForecast", sync = true)
-    public FestivalAreaCongestionForecastRes getFestivalAreaCongestionForecast(
+    public AiFestivalAreaCongestionForecastResponse getFestivalAreaCongestionForecast(
             FestivalKey festivalKey,
             LocalDate date,
             LocalTime time
@@ -91,41 +87,39 @@ public class FestivalService {
                         date.toString(),
                         time.format(DateTimeFormatter.ofPattern("HH:mm")),
                         false);
-        AiFestivalAreaCongestionForecastResponse forecast =
-                aiFestivalClient.fetchFestivalAreaCongestionForecast(request);
-        return FestivalAreaCongestionForecastRes.from(forecast);
+        return aiFestivalClient.fetchFestivalAreaCongestionForecast(request);
     }
 
-    private FestivalHomeRes toResponse(
+    private FestivalHomeReadModel toHomeReadModel(
             FestivalKey festivalKey,
             List<FestivalSummaryReadModel> festivals
     ) {
         return festivals.stream()
                 .filter(festival -> festivalKey.matches(festival.name()))
                 .findFirst()
-                .map(festival -> FestivalHomeRes.available(festivalKey, festival))
-                .orElseGet(() -> FestivalHomeRes.unavailable(
+                .map(festival -> FestivalHomeReadModel.available(festivalKey, festival))
+                .orElseGet(() -> FestivalHomeReadModel.unavailable(
                         festivalKey,
                         FestivalAvailability.NOT_FOUND));
     }
 
     private void registerFestivals(
-            List<FestivalHomeRes> responses,
+            List<FestivalHomeReadModel> results,
             int year
     ) {
         List<Festival> festivals = new ArrayList<>();
-        for (FestivalHomeRes response : responses) {
-            if (response.availability() != FestivalAvailability.AVAILABLE) {
+        for (FestivalHomeReadModel result : results) {
+            if (result.availability() != FestivalAvailability.AVAILABLE) {
                 continue;
             }
 
-            String contentId = response.festival().contentId();
+            String contentId = result.festival().contentId();
             Festival festival = festivalJpaRepository.findByContentIdAndYear(contentId, year)
                     .orElse(null);
             if (festival == null) {
-                festivals.add(Festival.create(contentId, year, response.festivalKey()));
+                festivals.add(Festival.create(contentId, year, result.festivalKey()));
             } else if (festival.getFestivalKey() == null) {
-                festival.assignFestivalKeyIfAbsent(response.festivalKey());
+                festival.assignFestivalKeyIfAbsent(result.festivalKey());
                 festivals.add(festival);
             }
         }

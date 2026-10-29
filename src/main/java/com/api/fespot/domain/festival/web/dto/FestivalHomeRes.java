@@ -1,6 +1,7 @@
 package com.api.fespot.domain.festival.web.dto;
 
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
+import com.api.fespot.domain.festival.entity.FestivalHomeReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -15,26 +16,12 @@ public record FestivalHomeRes(
         FestivalInfo festival
 ) {
 
-    public static FestivalHomeRes available(
-            FestivalKey festivalKey,
-            FestivalSummaryReadModel festival
-    ) {
+    public static FestivalHomeRes from(FestivalHomeReadModel result) {
         return new FestivalHomeRes(
-                festivalKey,
-                festivalKey.getDisplayName(),
-                FestivalAvailability.AVAILABLE,
-                FestivalInfo.from(festival));
-    }
-
-    public static FestivalHomeRes unavailable(
-            FestivalKey festivalKey,
-            FestivalAvailability availability
-    ) {
-        return new FestivalHomeRes(
-                festivalKey,
-                festivalKey.getDisplayName(),
-                availability,
-                null);
+                result.festivalKey(),
+                result.festivalKey().getDisplayName(),
+                result.availability(),
+                result.festival() == null ? null : FestivalInfo.from(result.festival()));
     }
 
     public record FestivalInfo(
