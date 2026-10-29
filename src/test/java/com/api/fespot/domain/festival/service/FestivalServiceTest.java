@@ -20,14 +20,12 @@ import com.api.fespot.domain.festival.client.ai.dto.AiFestivalAreaCongestionFore
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.entity.FestivalAvailability;
 import com.api.fespot.domain.festival.entity.FestivalDetailReadModel;
+import com.api.fespot.domain.festival.entity.FestivalHomeReadModel;
 import com.api.fespot.domain.festival.entity.FestivalKey;
 import com.api.fespot.domain.festival.entity.FestivalSummaryReadModel;
 import com.api.fespot.domain.festival.exception.FestivalErrorResponseCode;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
-import com.api.fespot.domain.festival.web.dto.FestivalAreaCongestionForecastRes;
-import com.api.fespot.domain.festival.web.dto.FestivalDetailRes;
-import com.api.fespot.domain.festival.web.dto.FestivalHomeRes;
 import com.api.fespot.global.exception.CustomException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -53,16 +51,16 @@ class FestivalServiceTest {
                 festivalJpaRepository,
                 mock(AiFestivalClient.class));
 
-        List<FestivalHomeRes> result = festivalService.getHomeFestivals(2026);
+        List<FestivalHomeReadModel> result = festivalService.getHomeFestivals(2026);
 
         assertThat(result)
-                .extracting(FestivalHomeRes::festivalKey)
+                .extracting(FestivalHomeReadModel::festivalKey)
                 .containsExactly(
                         FestivalKey.BUSAN_SEA_FESTIVAL,
                         FestivalKey.BUSAN_INTERNATIONAL_FILM_FESTIVAL,
                         FestivalKey.BUSAN_INTERNATIONAL_ROCK_FESTIVAL);
         assertThat(result)
-                .extracting(FestivalHomeRes::availability)
+                .extracting(FestivalHomeReadModel::availability)
                 .containsExactly(
                         FestivalAvailability.AVAILABLE,
                         FestivalAvailability.NOT_FOUND,
@@ -137,14 +135,14 @@ class FestivalServiceTest {
                 festivalJpaRepository,
                 mock(AiFestivalClient.class));
 
-        List<FestivalHomeRes> result = festivalService.getHomeFestivals(2026);
+        List<FestivalHomeReadModel> result = festivalService.getHomeFestivals(2026);
 
         assertThat(result).hasSize(3);
         assertThat(result)
-                .extracting(FestivalHomeRes::availability)
+                .extracting(FestivalHomeReadModel::availability)
                 .containsOnly(FestivalAvailability.API_ERROR);
         assertThat(result)
-                .extracting(FestivalHomeRes::festival)
+                .extracting(FestivalHomeReadModel::festival)
                 .containsOnlyNulls();
         verifyNoInteractions(festivalJpaRepository);
     }
@@ -163,7 +161,7 @@ class FestivalServiceTest {
                 festivalJpaRepository,
                 aiFestivalClient);
 
-        FestivalDetailRes result = festivalService.getFestivalDetail("100");
+        FestivalDetailReadModel result = festivalService.getFestivalDetail("100");
 
         assertThat(result.contentId()).isEqualTo("100");
         assertThat(result.name()).isEqualTo("부산바다축제");
@@ -230,27 +228,13 @@ class FestivalServiceTest {
                 festivalJpaRepository,
                 aiFestivalClient);
 
-        FestivalAreaCongestionForecastRes result =
+        AiFestivalAreaCongestionForecastResponse result =
                 festivalService.getFestivalAreaCongestionForecast(
                         FestivalKey.BUSAN_SEA_FESTIVAL,
                         LocalDate.of(2026, 8, 7),
                         LocalTime.of(19, 0));
 
-        assertThat(result.festivalId()).isEqualTo("busan_sea_festival");
-        assertThat(result.festivalName()).isEqualTo("부산바다축제");
-        assertThat(result.date()).isEqualTo("2026-08-07");
-        assertThat(result.time()).isEqualTo("19:00");
-        assertThat(result.timeRange()).isEqualTo("19:00~20:00");
-        assertThat(result.radiusM()).isEqualTo(1000);
-        assertThat(result.placeCount()).isEqualTo(2);
-        assertThat(result.facilities()).hasSize(2);
-        assertThat(result.facilities().get(0).placeName()).isEqualTo("테스트 식당");
-        assertThat(result.facilities().get(0).category()).isEqualTo("음식");
-        assertThat(result.facilities().get(0).distanceM()).isEqualTo(120.5);
-        assertThat(result.facilities().get(0).score()).isEqualTo(67.2);
-        assertThat(result.facilities().get(0).level()).isEqualTo("혼잡");
-        assertThat(result.facilities().get(0).longitude()).isEqualTo(128.9684);
-        assertThat(result.facilities().get(0).latitude()).isEqualTo(35.0472);
+        assertThat(result).isSameAs(forecast);
         verify(aiFestivalClient).fetchFestivalAreaCongestionForecast(request);
         verifyNoInteractions(festivalRepository, festivalJpaRepository);
     }

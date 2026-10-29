@@ -53,7 +53,9 @@ public class FestivalController {
             @RequestParam(defaultValue = "2026")
             @Min(value = 2026, message = "year는 2026 이상이어야 합니다.")
             @Max(value = 9999, message = "year는 네 자리 연도여야 합니다.") int year) {
-        List<FestivalHomeRes> response = festivalService.getHomeFestivals(year);
+        List<FestivalHomeRes> response = festivalService.getHomeFestivals(year).stream()
+                .map(FestivalHomeRes::from)
+                .toList();
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
@@ -66,7 +68,8 @@ public class FestivalController {
             @PathVariable
             @Pattern(regexp = "\\d+", message = "contentId는 숫자여야 합니다.") String contentId
     ) {
-        FestivalDetailRes response = festivalService.getFestivalDetail(contentId);
+        FestivalDetailRes response = FestivalDetailRes.from(
+                festivalService.getFestivalDetail(contentId));
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
@@ -104,7 +107,8 @@ public class FestivalController {
             @RequestParam
             String time
     ) {
-        FestivalAreaCongestionForecastRes response = festivalService.getFestivalAreaCongestionForecast(festivalKey, date, LocalTime.parse(time));
+        FestivalAreaCongestionForecastRes response = FestivalAreaCongestionForecastRes.from(
+                festivalService.getFestivalAreaCongestionForecast(festivalKey, date, LocalTime.parse(time)));
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(SuccessResponse.ok(response));
