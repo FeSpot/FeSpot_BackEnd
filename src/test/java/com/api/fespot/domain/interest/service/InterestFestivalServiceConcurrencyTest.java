@@ -3,7 +3,7 @@ package com.api.fespot.domain.interest.service;
 import com.api.fespot.domain.festival.entity.Festival;
 import com.api.fespot.domain.festival.repository.FestivalJpaRepository;
 import com.api.fespot.domain.festival.repository.FestivalRepository;
-import com.api.fespot.domain.interest.exception.InterestErrorCode;
+import com.api.fespot.domain.interest.enums.InterestFestivalErrorResponseCode;
 import com.api.fespot.domain.interest.exception.InterestFestivalAlreadyExistsException;
 import com.api.fespot.domain.interest.repository.InterestFestivalRepository;
 import com.api.fespot.domain.user.entity.User;
@@ -124,7 +124,7 @@ public class InterestFestivalServiceConcurrencyTest {
         assertThat(failures).singleElement()
                 .isInstanceOfSatisfying(InterestFestivalAlreadyExistsException.class, exception ->
                         assertThat(exception.getBaseResponseCode())
-                                .isEqualTo(InterestErrorCode.INTEREST_CONFLICT_409));
+                                .isEqualTo(InterestFestivalErrorResponseCode.INTEREST_FESTIVAL_ALREADY_EXISTS));
         assertThat(interestFestivalRepository.count()).isEqualTo(1);
     }
 }
