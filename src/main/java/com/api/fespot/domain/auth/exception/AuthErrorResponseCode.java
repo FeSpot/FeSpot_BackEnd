@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum AuthErrorResponseCode implements BaseResponseCode {
     DUPLICATED_EMAIL_409("AUTH_DUPLICATED_EMAIL_409", 409, "이미 사용 중인 이메일입니다."),
+    DUPLICATED_SOCIAL_ACCOUNT_409("AUTH_DUPLICATED_SOCIAL_ACCOUNT_409", 409, "이미 가입된 소셜 계정입니다."),
     LOGIN_FAILED_401("AUTH_LOGIN_FAILED_401", 401, "이메일 또는 비밀번호가 올바르지 않습니다."),
 
     BLACKLISTED_ACCESS_TOKEN_401("AUTH_BLACKLISTED_ACCESS_TOKEN_401", 401,
