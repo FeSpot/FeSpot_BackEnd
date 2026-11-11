@@ -1,12 +1,10 @@
 package com.api.fespot.domain.report.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.api.fespot.domain.festival.entity.Festival;
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
-import com.api.fespot.global.exception.CustomException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,18 +40,16 @@ class ReportLikeEntityTest {
     @Test
     @DisplayName("사용자가 null이면 제보 좋아요 생성에 실패한다")
     void rejectsNullUser() {
-        assertThatExceptionOfType(CustomException.class)
+        assertThatNullPointerException()
                 .isThrownBy(() -> ReportLike.create(null, report))
-                .satisfies(exception -> assertThat(exception.getBaseResponseCode())
-                        .isEqualTo(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500));
+                .withMessageContaining("user");
     }
 
     @Test
     @DisplayName("제보가 null이면 제보 좋아요 생성에 실패한다")
     void rejectsNullReport() {
-        assertThatExceptionOfType(CustomException.class)
+        assertThatNullPointerException()
                 .isThrownBy(() -> ReportLike.create(user, null))
-                .satisfies(exception -> assertThat(exception.getBaseResponseCode())
-                        .isEqualTo(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500));
+                .withMessageContaining("report");
     }
 }

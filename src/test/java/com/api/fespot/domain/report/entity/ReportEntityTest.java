@@ -1,12 +1,10 @@
 package com.api.fespot.domain.report.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.api.fespot.domain.festival.entity.Festival;
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
-import com.api.fespot.global.exception.CustomException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,7 +55,7 @@ class ReportEntityTest {
             String originalLocation,
             CongestionLevel congestionLevel
     ) {
-        assertThatExceptionOfType(CustomException.class)
+        assertThatNullPointerException()
                 .isThrownBy(() -> Report.builder()
                         .user(user)
                         .reportLocation(location)
@@ -65,8 +63,7 @@ class ReportEntityTest {
                         .originalLocation(originalLocation)
                         .congestionLevel(congestionLevel)
                         .build())
-                .satisfies(exception -> assertThat(exception.getBaseResponseCode())
-                        .isEqualTo(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500));
+                .withMessageContaining(fieldName);
     }
 
     private static Stream<Arguments> nullRequiredFields() {

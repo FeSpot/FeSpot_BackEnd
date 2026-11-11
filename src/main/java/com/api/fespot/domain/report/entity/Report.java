@@ -1,9 +1,7 @@
 package com.api.fespot.domain.report.entity;
 
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.entity.BaseEntity;
-import com.api.fespot.global.exception.CustomException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,6 +14,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Objects;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -67,14 +67,11 @@ public class Report extends BaseEntity {
             CongestionLevel congestionLevel,
             String imageUrl
     ) {
-        if(user == null || reportLocation == null || content == null || originalLocation == null || congestionLevel == null) {
-            throw new CustomException(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500);
-        }
-        this.user = user;
-        this.reportLocation = reportLocation;
-        this.content = content;
-        this.originalLocation = originalLocation;
-        this.congestionLevel = congestionLevel;
+        this.user = Objects.requireNonNull(user, "user는 필수 값입니다.");
+        this.reportLocation = Objects.requireNonNull(reportLocation, "reportLocation은 필수 값입니다.");
+        this.content = Objects.requireNonNull(content, "content는 필수 값입니다.");
+        this.originalLocation = Objects.requireNonNull(originalLocation, "originalLocation은 필수 값입니다.");
+        this.congestionLevel = Objects.requireNonNull(congestionLevel, "congestionLevel은 필수 값입니다.");
         this.imageUrl = imageUrl;
     }
 

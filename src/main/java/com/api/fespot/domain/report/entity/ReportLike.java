@@ -1,13 +1,13 @@
 package com.api.fespot.domain.report.entity;
 
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.domain.user.entity.User;
 import com.api.fespot.global.entity.BaseEntity;
-import com.api.fespot.global.exception.CustomException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.Objects;
 
 @Entity
 @Getter
@@ -37,11 +37,8 @@ public class ReportLike extends BaseEntity {
     private Report report;
 
     private ReportLike(User user, Report report) {
-        if(user == null || report == null) {
-            throw new CustomException(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500);
-        }
-        this.user = user;
-        this.report = report;
+        this.user = Objects.requireNonNull(user, "user는 필수 값입니다.");
+        this.report = Objects.requireNonNull(report, "report는 필수 값입니다.");
     }
 
     public static ReportLike create(User user, Report report) {

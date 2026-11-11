@@ -1,11 +1,9 @@
 package com.api.fespot.domain.report.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.api.fespot.domain.festival.entity.Festival;
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
-import com.api.fespot.global.exception.CustomException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -14,10 +12,9 @@ class ReportLocationEntityTest {
     @Test
     @DisplayName("축제가 null이면 제보 위치 생성에 실패한다")
     void rejectsNullFestival() {
-        assertThatExceptionOfType(CustomException.class)
+        assertThatNullPointerException()
                 .isThrownBy(() -> ReportLocation.create(null, "메인 무대", 35.1532, 129.1187))
-                .satisfies(exception -> assertThat(exception.getBaseResponseCode())
-                        .isEqualTo(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500));
+                .withMessageContaining("festival");
     }
 
     @Test

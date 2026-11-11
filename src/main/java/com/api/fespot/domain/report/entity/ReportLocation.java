@@ -1,15 +1,14 @@
 package com.api.fespot.domain.report.entity;
 
 import com.api.fespot.domain.festival.entity.Festival;
-import com.api.fespot.domain.report.exception.ReportErrorResponseCode;
 import com.api.fespot.global.entity.BaseEntity;
-import com.api.fespot.global.exception.CustomException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Getter
 @Entity
@@ -45,14 +44,11 @@ public class ReportLocation extends BaseEntity {
             double anchorLongitude,
             LocalDateTime lastReportedAt
     ) {
-        if(festival == null) {
-            throw new CustomException(ReportErrorResponseCode.REPORT_BAD_ARGUMENT_500);
-        }
-        this.festival = festival;
+        this.festival = Objects.requireNonNull(festival, "festival은 필수 값입니다.");
         this.signatureName = signatureName;
         this.anchorLatitude = anchorLatitude;
         this.anchorLongitude = anchorLongitude;
-        this.lastReportedAt = lastReportedAt;
+        this.lastReportedAt = Objects.requireNonNull(lastReportedAt, "lastReportedAt은 필수 값입니다.");
     }
 
     public static ReportLocation create(
