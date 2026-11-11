@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Objects;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,8 +37,8 @@ public class ReportLike extends BaseEntity {
     private Report report;
 
     private ReportLike(User user, Report report) {
-        this.user = user;
-        this.report = report;
+        this.user = Objects.requireNonNull(user, "user는 필수 값입니다.");
+        this.report = Objects.requireNonNull(report, "report는 필수 값입니다.");
     }
 
     public static ReportLike create(User user, Report report) {

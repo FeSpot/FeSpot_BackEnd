@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Getter
 @Entity
@@ -43,11 +44,11 @@ public class ReportLocation extends BaseEntity {
             double anchorLongitude,
             LocalDateTime lastReportedAt
     ) {
-        this.festival = festival;
+        this.festival = Objects.requireNonNull(festival, "festival은 필수 값입니다.");
         this.signatureName = signatureName;
         this.anchorLatitude = anchorLatitude;
         this.anchorLongitude = anchorLongitude;
-        this.lastReportedAt = lastReportedAt;
+        this.lastReportedAt = Objects.requireNonNull(lastReportedAt, "lastReportedAt은 필수 값입니다.");
     }
 
     public static ReportLocation create(
